@@ -9,7 +9,7 @@ settings:
   SWIFT_VERSION: "6.0"
 packages:
   PartyPlayKit:
-    path: Packages/PartyPlayKit
+    path: ../party-play-kit
 targets:
   Doodleoop:
     type: application

@@ -8,7 +8,7 @@ Same shape as Empires:
 
 **Views → GameSession intents → (host) GameEngine → syncState → joiners**
 
-Shared local-play infrastructure lives in [`Packages/PartyPlayKit`](Packages/PartyPlayKit): Multipeer transport, device identity, seat/handoff models.
+Shared local-play infrastructure lives in sibling [`party-play-kit`](https://github.com/utopastac/party-play-kit) (`../party-play-kit`): Multipeer transport, device identity, seat/handoff models. Empires uses the same package.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ xcodebuild test -project Doodleoop.xcodeproj -scheme Doodleoop -destination 'pla
 
 ## PartyPlayKit
 
-Reusable by Empires and Doodleoop. Path dependency today; can become its own repo later.
+Shared with Empires via path `../party-play-kit` ([repo](https://github.com/utopastac/party-play-kit)).
 
 | API | Role |
 |-----|------|

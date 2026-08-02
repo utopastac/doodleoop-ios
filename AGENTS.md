@@ -8,7 +8,7 @@
 | Domain state | `Doodleoop/Models/GameModels.swift` | Mix networking enums into UI |
 | Sync, seats, handoffs, Multipeer | `Doodleoop/Networking/GameSession.swift` | Duplicate host/joiner apply paths |
 | Wire protocol | `Doodleoop/Networking/NetworkMessage.swift` | Redefine messages in models |
-| Shared Multipeer / device / seats | `Packages/PartyPlayKit` | Copy Multipeer wrappers into the app |
+| Shared Multipeer / device / seats | `../party-play-kit` (PartyPlayKit) | Copy Multipeer wrappers into the app |
 | UI / screens | `Doodleoop/Views/*.swift` | Call Multipeer or mutate `GameState` directly |
 
 Flow: **Views → GameSession intents → (host) GameEngine → syncState → joiners**.

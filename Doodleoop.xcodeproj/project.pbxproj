@@ -37,7 +37,7 @@
 /* Begin PBXFileReference section */
 		0AA9919AF1010F8FE1C0D385 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0C197988DB66529732A5329B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		37BC9E4A54B6F9D06C5868DA /* PartyPlayKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyPlayKit; path = Packages/PartyPlayKit; sourceTree = SOURCE_ROOT; };
+		255A6175E37B3C137BB4F819 /* party-play-kit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = "party-play-kit"; path = "../party-play-kit"; sourceTree = SOURCE_ROOT; };
 		3C8E43D291F3A094221A19E7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3E78A68452B445EE2B9A2E37 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
 		4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngineTests.swift; sourceTree = "<group>"; };
@@ -150,9 +150,9 @@
 		E423A2BFE41F1763E0252680 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				37BC9E4A54B6F9D06C5868DA /* PartyPlayKit */,
+				255A6175E37B3C137BB4F819 /* party-play-kit */,
 			);
-			path = Packages;
+			name = Packages;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -217,7 +217,7 @@
 			mainGroup = 81EDC16D88B87C39249A0C18;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				2A83E1D6DFB52C822C0273EF /* XCLocalSwiftPackageReference "Packages/PartyPlayKit" */,
+				40874441BDB5A7897186BEC5 /* XCLocalSwiftPackageReference "../party-play-kit" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 94166CCFB4E75C3432AB87E2 /* Products */;
@@ -506,9 +506,9 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		2A83E1D6DFB52C822C0273EF /* XCLocalSwiftPackageReference "Packages/PartyPlayKit" */ = {
+		40874441BDB5A7897186BEC5 /* XCLocalSwiftPackageReference "../party-play-kit" */ = {
 			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/PartyPlayKit;
+			relativePath = "../party-play-kit";
 		};
 /* End XCLocalSwiftPackageReference section */
 
