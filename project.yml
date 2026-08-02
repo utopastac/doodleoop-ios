@@ -1,0 +1,38 @@
+name: Doodleoop
+options:
+  bundleIdPrefix: co.utopastac
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  BASE_SDK: iphoneos
+  SWIFT_VERSION: "6.0"
+packages:
+  PartyPlayKit:
+    path: Packages/PartyPlayKit
+targets:
+  Doodleoop:
+    type: application
+    platform: iOS
+    sources:
+      - Doodleoop
+    dependencies:
+      - package: PartyPlayKit
+    info:
+      path: Doodleoop/Info.plist
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: co.utopastac.doodleoop
+      PRODUCT_NAME: Doodleoop
+      TARGETED_DEVICE_FAMILY: "1,2"
+      MARKETING_VERSION: "0.1.0"
+      CURRENT_PROJECT_VERSION: "1"
+  DoodleoopTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - DoodleoopTests
+    dependencies:
+      - target: Doodleoop
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: co.utopastac.doodleoop.tests
+      GENERATE_INFOPLIST_FILE: YES

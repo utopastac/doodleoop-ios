@@ -1,0 +1,23 @@
+# DerivedData/
+build/
+*.xcuserstate
+*.xccheckout
+*.xcscmblueprint
+xcuserdata/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+.DS_Store
+**/.DS_Store
+
+.build/
+.swiftpm/
+Packages/PartyPlayKit/.build/
+
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output

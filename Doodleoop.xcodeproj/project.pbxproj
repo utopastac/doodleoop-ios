@@ -1,0 +1,523 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0B0D67B965D8598DF2C60FFF /* GuessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */; };
+		0FC6CD2C07129B8281998989 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E78A68452B445EE2B9A2E37 /* LobbyView.swift */; };
+		2CE4C18582B887EBD27C8148 /* DoodleoopApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */; };
+		33469B4EA2924FE188ECE3A3 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */; };
+		5B049B89F050D2018FF4F026 /* GameEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */; };
+		79FBF6580C3DC193104BF41C /* NetworkMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD68ECCF5EFF6B59975F7558 /* NetworkMessage.swift */; };
+		7BED6908D2648759E3138893 /* RevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */; };
+		7FF714B66A84E6E07C2F8518 /* GameEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */; };
+		8718E0FDBEC7EC93635F044C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C197988DB66529732A5329B /* ContentView.swift */; };
+		98625166CED6AF17FBA06EC3 /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */; };
+		D6CBD4C80F9C05114509600D /* PartyPlayKit in Frameworks */ = {isa = PBXBuildFile; productRef = CE2DD1AA80EEC4227E4D4E07 /* PartyPlayKit */; };
+		ED9D38960689EA53059435E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8E43D291F3A094221A19E7 /* Theme.swift */; };
+		F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */; };
+		FE2F3CEAF4BD73D656F2DF9C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92FDA77B5436CAA55ADCBC13 /* HomeView.swift */; };
+		FFD40B4B5D01E2D243BD1A9D /* GameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84840D7FCCB04D99D9836AF /* GameSession.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		54D1E0CC855F72F1B03C6417 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 023E326FE1E6DCA669DF16ED /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1C00121FD236B9F3E72C6E52;
+			remoteInfo = Doodleoop;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0AA9919AF1010F8FE1C0D385 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		0C197988DB66529732A5329B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		37BC9E4A54B6F9D06C5868DA /* PartyPlayKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PartyPlayKit; path = Packages/PartyPlayKit; sourceTree = SOURCE_ROOT; };
+		3C8E43D291F3A094221A19E7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		3E78A68452B445EE2B9A2E37 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
+		4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngineTests.swift; sourceTree = "<group>"; };
+		571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleoopApp.swift; sourceTree = "<group>"; };
+		6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealView.swift; sourceTree = "<group>"; };
+		85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngine.swift; sourceTree = "<group>"; };
+		8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
+		92FDA77B5436CAA55ADCBC13 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessingView.swift; sourceTree = "<group>"; };
+		BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C260CDB7F36531A79B556B65 /* Doodleoop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Doodleoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D84840D7FCCB04D99D9836AF /* GameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSession.swift; sourceTree = "<group>"; };
+		E41DC645569C9B10BE37DB14 /* DoodleoopTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DoodleoopTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingView.swift; sourceTree = "<group>"; };
+		FD68ECCF5EFF6B59975F7558 /* NetworkMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkMessage.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E00FC4B715F7DBBF2CB6FF7E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D6CBD4C80F9C05114509600D /* PartyPlayKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2A72F0480324478D2869FB3E /* Doodleoop */ = {
+			isa = PBXGroup;
+			children = (
+				BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */,
+				0C197988DB66529732A5329B /* ContentView.swift */,
+				571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */,
+				0AA9919AF1010F8FE1C0D385 /* Info.plist */,
+				9E82349AF48EEA17A9B4B04E /* Models */,
+				6F7641261673D9E5B10ADE6F /* Networking */,
+				538609CAD13F07CCB032829F /* Theme */,
+				CE521F5F247D873D4CA6EC93 /* Views */,
+			);
+			path = Doodleoop;
+			sourceTree = "<group>";
+		};
+		538609CAD13F07CCB032829F /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				3C8E43D291F3A094221A19E7 /* Theme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+		6F7641261673D9E5B10ADE6F /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				D84840D7FCCB04D99D9836AF /* GameSession.swift */,
+				FD68ECCF5EFF6B59975F7558 /* NetworkMessage.swift */,
+			);
+			path = Networking;
+			sourceTree = "<group>";
+		};
+		81EDC16D88B87C39249A0C18 = {
+			isa = PBXGroup;
+			children = (
+				2A72F0480324478D2869FB3E /* Doodleoop */,
+				B056C997A40999BA52C59A6C /* DoodleoopTests */,
+				E423A2BFE41F1763E0252680 /* Packages */,
+				94166CCFB4E75C3432AB87E2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		94166CCFB4E75C3432AB87E2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C260CDB7F36531A79B556B65 /* Doodleoop.app */,
+				E41DC645569C9B10BE37DB14 /* DoodleoopTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		9E82349AF48EEA17A9B4B04E /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */,
+				8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		B056C997A40999BA52C59A6C /* DoodleoopTests */ = {
+			isa = PBXGroup;
+			children = (
+				4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */,
+			);
+			path = DoodleoopTests;
+			sourceTree = "<group>";
+		};
+		CE521F5F247D873D4CA6EC93 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */,
+				ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */,
+				92FDA77B5436CAA55ADCBC13 /* HomeView.swift */,
+				3E78A68452B445EE2B9A2E37 /* LobbyView.swift */,
+				6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		E423A2BFE41F1763E0252680 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				37BC9E4A54B6F9D06C5868DA /* PartyPlayKit */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		1C00121FD236B9F3E72C6E52 /* Doodleoop */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F196173DC01067FCDABFBC79 /* Build configuration list for PBXNativeTarget "Doodleoop" */;
+			buildPhases = (
+				B39F8865131FDD0747D1E7B2 /* Sources */,
+				348E585E32A8B7C3FEFBF0E7 /* Resources */,
+				E00FC4B715F7DBBF2CB6FF7E /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Doodleoop;
+			packageProductDependencies = (
+				CE2DD1AA80EEC4227E4D4E07 /* PartyPlayKit */,
+			);
+			productName = Doodleoop;
+			productReference = C260CDB7F36531A79B556B65 /* Doodleoop.app */;
+			productType = "com.apple.product-type.application";
+		};
+		24C5C6B7E4AE9432AA2927D2 /* DoodleoopTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3FBCE80C949DEE1B2304782D /* Build configuration list for PBXNativeTarget "DoodleoopTests" */;
+			buildPhases = (
+				E969DD9B59A117AC5F049ECE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0F4365A0C0EB33261791B720 /* PBXTargetDependency */,
+			);
+			name = DoodleoopTests;
+			packageProductDependencies = (
+			);
+			productName = DoodleoopTests;
+			productReference = E41DC645569C9B10BE37DB14 /* DoodleoopTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		023E326FE1E6DCA669DF16ED /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 599C91D1B12D70E2004F34A5 /* Build configuration list for PBXProject "Doodleoop" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 81EDC16D88B87C39249A0C18;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2A83E1D6DFB52C822C0273EF /* XCLocalSwiftPackageReference "Packages/PartyPlayKit" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 94166CCFB4E75C3432AB87E2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				1C00121FD236B9F3E72C6E52 /* Doodleoop */,
+				24C5C6B7E4AE9432AA2927D2 /* DoodleoopTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		348E585E32A8B7C3FEFBF0E7 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B39F8865131FDD0747D1E7B2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8718E0FDBEC7EC93635F044C /* ContentView.swift in Sources */,
+				2CE4C18582B887EBD27C8148 /* DoodleoopApp.swift in Sources */,
+				98625166CED6AF17FBA06EC3 /* DrawingView.swift in Sources */,
+				5B049B89F050D2018FF4F026 /* GameEngine.swift in Sources */,
+				33469B4EA2924FE188ECE3A3 /* GameModels.swift in Sources */,
+				FFD40B4B5D01E2D243BD1A9D /* GameSession.swift in Sources */,
+				0B0D67B965D8598DF2C60FFF /* GuessingView.swift in Sources */,
+				FE2F3CEAF4BD73D656F2DF9C /* HomeView.swift in Sources */,
+				0FC6CD2C07129B8281998989 /* LobbyView.swift in Sources */,
+				79FBF6580C3DC193104BF41C /* NetworkMessage.swift in Sources */,
+				7BED6908D2648759E3138893 /* RevealView.swift in Sources */,
+				ED9D38960689EA53059435E4 /* Theme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E969DD9B59A117AC5F049ECE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				7FF714B66A84E6E07C2F8518 /* GameEngineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0F4365A0C0EB33261791B720 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1C00121FD236B9F3E72C6E52 /* Doodleoop */;
+			targetProxy = 54D1E0CC855F72F1B03C6417 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0F16FBD1B6CF893A2FCF060C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				BASE_SDK = iphoneos;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		454973F481256D9BE7D3AC00 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				BASE_SDK = iphoneos;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		63222AA1659C76C6F0D98B34 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Doodleoop.app/Doodleoop";
+			};
+			name = Release;
+		};
+		9B71A58EE0A65AE9535DDF44 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Doodleoop/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop;
+				PRODUCT_NAME = Doodleoop;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		BB8EF3BE0EE593CE36C9FA45 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				INFOPLIST_FILE = Doodleoop/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop;
+				PRODUCT_NAME = Doodleoop;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F632582D2AABDEF298C9CE8D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Doodleoop.app/Doodleoop";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		3FBCE80C949DEE1B2304782D /* Build configuration list for PBXNativeTarget "DoodleoopTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F632582D2AABDEF298C9CE8D /* Debug */,
+				63222AA1659C76C6F0D98B34 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		599C91D1B12D70E2004F34A5 /* Build configuration list for PBXProject "Doodleoop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0F16FBD1B6CF893A2FCF060C /* Debug */,
+				454973F481256D9BE7D3AC00 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F196173DC01067FCDABFBC79 /* Build configuration list for PBXNativeTarget "Doodleoop" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB8EF3BE0EE593CE36C9FA45 /* Debug */,
+				9B71A58EE0A65AE9535DDF44 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		2A83E1D6DFB52C822C0273EF /* XCLocalSwiftPackageReference "Packages/PartyPlayKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/PartyPlayKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		CE2DD1AA80EEC4227E4D4E07 /* PartyPlayKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = PartyPlayKit;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 023E326FE1E6DCA669DF16ED /* Project object */;
+}
