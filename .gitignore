@@ -15,7 +15,6 @@ xcuserdata/
 
 .build/
 .swiftpm/
-Packages/PartyPlayKit/.build/
 
 fastlane/report.xml
 fastlane/Preview.html

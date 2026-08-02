@@ -6,9 +6,8 @@
 |---------|-----------|--------|
 | Game rules / phases | `Doodleoop/Models/GameEngine.swift` | Put rules in views or session timers |
 | Domain state | `Doodleoop/Models/GameModels.swift` | Mix networking enums into UI |
-| Sync, seats, handoffs, Multipeer | `Doodleoop/Networking/GameSession.swift` | Duplicate host/joiner apply paths |
+| Sync, seats, handoffs, Multipeer | `Doodleoop/Networking/GameSession.swift` (+ transport helpers) | Duplicate host/joiner apply paths |
 | Wire protocol | `Doodleoop/Networking/NetworkMessage.swift` | Redefine messages in models |
-| Shared Multipeer / device / seats | `../party-play-kit` (PartyPlayKit) | Copy Multipeer wrappers into the app |
 | UI / screens | `Doodleoop/Views/*.swift` | Call Multipeer or mutate `GameState` directly |
 
 Flow: **Views → GameSession intents → (host) GameEngine → syncState → joiners**.
@@ -27,7 +26,7 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 
 ## IDs
 
-- `deviceId` / `devicePlayerId` — phone identity (`DeviceIdentity` in PartyPlayKit)
+- `deviceId` / `devicePlayerId` — phone identity (`DeviceIdentity`)
 - `localPlayerId` — active seat on this phone
 - `hostId` — lobby creator seat
 - Pad `id` — starter seat for that chain

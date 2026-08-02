@@ -7,17 +7,12 @@ options:
 settings:
   BASE_SDK: iphoneos
   SWIFT_VERSION: "6.0"
-packages:
-  PartyPlayKit:
-    path: ../party-play-kit
 targets:
   Doodleoop:
     type: application
     platform: iOS
     sources:
       - Doodleoop
-    dependencies:
-      - package: PartyPlayKit
     info:
       path: Doodleoop/Info.plist
     settings:

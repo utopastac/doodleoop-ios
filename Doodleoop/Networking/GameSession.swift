@@ -1,7 +1,6 @@
 import Foundation
 import MultipeerConnectivity
 import Combine
-import PartyPlayKit
 
 @MainActor
 final class GameSession: ObservableObject {
@@ -45,7 +44,6 @@ final class GameSession: ObservableObject {
     }
 
     let id = DeviceIdentity.current()
-    // Prefer Empires-style key if migrating later; kit key is canonical here.
     devicePlayerId = id
     localPlayerId = id
   }
