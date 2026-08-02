@@ -5,12 +5,13 @@ enum GameEngine {
     id: String,
     name: String,
     deviceId: String,
+    avatar: Drawing = .empty,
     to state: GameState
   ) -> GameState {
     var next = state
     guard next.phase == .lobby else { return state }
     guard !next.players.contains(where: { $0.id == id }) else { return state }
-    next.players.append(Player(id: id, deviceId: deviceId, name: name))
+    next.players.append(Player(id: id, deviceId: deviceId, name: name, avatar: avatar))
     if next.hostId.isEmpty {
       next.hostId = id
     }
@@ -43,8 +44,28 @@ enum GameEngine {
     return next
   }
 
+  static func updateAvatar(playerId: String, avatar: Drawing, in state: GameState) -> GameState {
+    var next = state
+    guard let index = next.playerIndex(playerId) else { return state }
+    next.players[index].avatar = avatar
+    return next
+  }
+
+  /// Host-only lobby settings for turn timers.
+  static func updateSettings(
+    drawTimeLimitSeconds: Int,
+    guessTimeLimitSeconds: Int,
+    in state: GameState
+  ) -> GameState {
+    var next = state
+    guard next.phase == .lobby || next.phase == .roundOver else { return state }
+    next.drawTimeLimitSeconds = clampTimeLimit(drawTimeLimitSeconds)
+    next.guessTimeLimitSeconds = clampTimeLimit(guessTimeLimitSeconds)
+    return next
+  }
+
   /// Starts a round: every seat draws the shared category first.
-  static func startRound(category: String, in state: GameState) -> GameState {
+  static func startRound(category: String, in state: GameState, now: Date = Date()) -> GameState {
     var next = state
     let trimmed = category.trimmingCharacters(in: .whitespacesAndNewlines)
     guard next.phase == .lobby || next.phase == .roundOver else { return state }
@@ -58,13 +79,15 @@ enum GameEngine {
       SketchPad(id: player.id, steps: [.prompt(trimmed)])
     }
     next.phase = .drawing
+    next.phaseEndsAt = now.addingTimeInterval(TimeInterval(next.drawTimeLimitSeconds))
     return next
   }
 
   static func submitDrawing(
     playerId: String,
     drawing: Drawing,
-    in state: GameState
+    in state: GameState,
+    now: Date = Date()
   ) -> GameState {
     var next = state
     guard next.phase == .drawing, next.isDrawTurn else { return state }
@@ -77,13 +100,14 @@ enum GameEngine {
     pad.steps.append(.drawing(playerId: playerId, drawing: drawing))
     next.pads[padIndex] = pad
     next.submittedPlayerIds.insert(playerId)
-    return advanceIfReady(next)
+    return advanceIfReady(next, now: now)
   }
 
   static func submitGuess(
     playerId: String,
     text: String,
-    in state: GameState
+    in state: GameState,
+    now: Date = Date()
   ) -> GameState {
     var next = state
     let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -97,7 +121,28 @@ enum GameEngine {
     pad.steps.append(.guess(playerId: playerId, text: trimmed))
     next.pads[padIndex] = pad
     next.submittedPlayerIds.insert(playerId)
-    return advanceIfReady(next)
+    return advanceIfReady(next, now: now)
+  }
+
+  /// When the turn timer expires, fill missing submissions and advance.
+  static func expireTurn(in state: GameState, now: Date = Date()) -> GameState {
+    var next = state
+    guard next.phase == .drawing || next.phase == .guessing else { return state }
+    guard let ends = next.phaseEndsAt, now >= ends else { return state }
+
+    for player in next.players where !next.submittedPlayerIds.contains(player.id) {
+      guard var pad = next.pad(inFrontOf: player.id),
+            let padIndex = next.pads.firstIndex(where: { $0.id == pad.id }) else { continue }
+      if next.phase == .drawing {
+        pad.steps.append(.drawing(playerId: player.id, drawing: .empty))
+      } else {
+        pad.steps.append(.guess(playerId: player.id, text: "…"))
+      }
+      next.pads[padIndex] = pad
+      next.submittedPlayerIds.insert(player.id)
+    }
+
+    return advanceIfReady(next, now: now)
   }
 
   static func advanceReveal(in state: GameState) -> GameState {
@@ -119,10 +164,11 @@ enum GameEngine {
     next.turnIndex = 0
     next.submittedPlayerIds = []
     next.revealPadIndex = 0
+    next.phaseEndsAt = nil
     return next
   }
 
-  private static func advanceIfReady(_ state: GameState) -> GameState {
+  private static func advanceIfReady(_ state: GameState, now: Date) -> GameState {
     var next = state
     guard next.allSubmitted else { return next }
 
@@ -132,10 +178,16 @@ enum GameEngine {
     if next.isRoundComplete {
       next.phase = .reveal
       next.revealPadIndex = 0
+      next.phaseEndsAt = nil
       return next
     }
 
     next.phase = next.isDrawTurn ? .drawing : .guessing
+    next.phaseEndsAt = now.addingTimeInterval(TimeInterval(next.currentTurnTimeLimitSeconds))
     return next
+  }
+
+  private static func clampTimeLimit(_ seconds: Int) -> Int {
+    min(max(seconds, GameTimerDefaults.minSeconds), GameTimerDefaults.maxSeconds)
   }
 }

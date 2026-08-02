@@ -10,27 +10,40 @@ struct LobbyView: View {
     NavigationStack {
       VStack(alignment: .leading, spacing: 20) {
         Text(session.isHost ? "Your lobby" : "Lobby")
-          .font(.largeTitle.weight(.black))
+          .font(Theme.Fonts.largeTitle)
 
         Text("\(state.players.count) players · pass drawings to the left")
           .foregroundStyle(.secondary)
 
+        Text("Draw \(state.drawTimeLimitSeconds)s · Guess \(state.guessTimeLimitSeconds)s")
+          .font(Theme.Fonts.subheadline)
+          .foregroundStyle(Theme.ink.opacity(0.65))
+
+        NavigationLink {
+          GameSettingsView()
+        } label: {
+          Label("Game settings", systemImage: "timer")
+            .font(Theme.Fonts.headline)
+            .foregroundStyle(Theme.teal)
+        }
+
         List {
           ForEach(state.players) { player in
-            HStack {
+            HStack(spacing: 12) {
+              AvatarBadge(drawing: player.avatar, size: 40)
               Text(player.name)
-                .font(.headline)
+                .font(Theme.Fonts.headline)
               Spacer()
               if player.id == state.hostId {
                 Text("Host")
-                  .font(.caption.weight(.bold))
+                  .font(Theme.Fonts.caption)
                   .foregroundStyle(Theme.coral)
               }
               if player.deviceId == session.localDeviceId && player.id != session.devicePlayerId {
                 Button("Remove") {
                   session.removeLocalSeat(player.id)
                 }
-                .font(.caption)
+                .font(Theme.Fonts.caption)
               }
             }
           }
@@ -43,7 +56,7 @@ struct LobbyView: View {
 
         if session.role == .joiner && !session.discoveredPeers.isEmpty {
           Text("Nearby games")
-            .font(.headline)
+            .font(Theme.Fonts.headline)
           ForEach(session.discoveredPeers, id: \.displayName) { peer in
             Button(peer.displayName) {
               session.join(peer)

@@ -10,7 +10,7 @@ struct RevealView: View {
 
     VStack(spacing: 16) {
       Text("Reveal")
-        .font(.largeTitle.weight(.black))
+        .font(Theme.Fonts.largeTitle)
       if let starter {
         Text("Started by \(starter.name)")
           .foregroundStyle(.secondary)
@@ -26,7 +26,7 @@ struct RevealView: View {
               case .drawing(let playerId, let drawing):
                 VStack(alignment: .leading, spacing: 8) {
                   Text(state?.player(id: playerId)?.name ?? "Player")
-                    .font(.headline)
+                    .font(Theme.Fonts.headline)
                   ReadOnlyDrawingView(drawing: drawing)
                     .frame(height: 220)
                 }
@@ -59,10 +59,10 @@ struct RevealView: View {
   private func labeled(_ title: String, _ body: String) -> some View {
     VStack(alignment: .leading, spacing: 4) {
       Text(title)
-        .font(.caption.weight(.bold))
+        .font(Theme.Fonts.caption)
         .foregroundStyle(Theme.teal)
       Text(body)
-        .font(.title3.weight(.semibold))
+        .font(Theme.Fonts.title3)
     }
   }
 }
@@ -74,7 +74,7 @@ struct RoundOverView: View {
     VStack(spacing: 24) {
       Spacer()
       Text("Loop complete")
-        .font(.largeTitle.weight(.black))
+        .font(Theme.Fonts.largeTitle)
       Text("Ready for another category?")
         .foregroundStyle(.secondary)
       if session.isHost {
@@ -101,14 +101,15 @@ struct HandoffOverlay: View {
         Theme.ink.opacity(0.94).ignoresSafeArea()
         VStack(spacing: 20) {
           Text(handoff.title)
-            .font(.largeTitle.weight(.black))
+            .font(Theme.Fonts.largeTitle)
             .foregroundStyle(.white)
           Text(handoff.message)
             .multilineTextAlignment(.center)
             .foregroundStyle(.white.opacity(0.85))
             .padding(.horizontal, 28)
+          AvatarBadge(drawing: player.avatar, size: 120)
           Text(player.name)
-            .font(.system(size: 40, weight: .black, design: .rounded))
+            .font(Theme.Fonts.permanentMarker(size: 40))
             .foregroundStyle(Theme.mustard)
           Button("I'm \(player.name)") {
             session.confirmHandoff()

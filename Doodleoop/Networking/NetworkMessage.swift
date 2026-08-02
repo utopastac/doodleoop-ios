@@ -3,8 +3,9 @@ import Foundation
 /// Wire protocol between host and joiners.
 enum NetworkMessage: Codable, Equatable {
   case syncState(GameState)
-  case hello(playerId: String, name: String)
+  case hello(playerId: String, name: String, avatar: Drawing)
   case setName(playerId: String, name: String)
+  case setAvatar(playerId: String, avatar: Drawing)
   case addPlayer(playerId: String, name: String)
   case removePlayer(playerId: String)
   case startRound(category: String)

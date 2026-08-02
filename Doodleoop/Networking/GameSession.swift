@@ -5,6 +5,7 @@ import Combine
 @MainActor
 final class GameSession: ObservableObject {
   static let serviceType = "doodleoop-game"
+  static let avatarDefaultsKey = "doodleoop.avatar"
 
   @Published private(set) var state: GameState?
   @Published private(set) var role: Role = .idle
@@ -12,6 +13,7 @@ final class GameSession: ObservableObject {
   @Published private(set) var handoff: SeatHandoff?
 
   @Published var localDisplayName: String
+  @Published private(set) var localAvatar: Drawing
   @Published var draftCategory: String = ""
 
   let devicePlayerId: String
@@ -20,6 +22,7 @@ final class GameSession: ObservableObject {
   private var transport: MultipeerTransport?
   private var peerDeviceIds: [String: String] = [:]
   private var cancellables = Set<AnyCancellable>()
+  private var phaseTimerTask: Task<Void, Never>?
 
   enum Role: Equatable {
     case idle
@@ -30,6 +33,8 @@ final class GameSession: ObservableObject {
   var isHost: Bool { role == .host }
 
   var localDeviceId: String { devicePlayerId }
+
+  var hasSavedAvatar: Bool { !localAvatar.isEmpty }
 
   var localSeats: [Player] {
     state?.players.filter { $0.deviceId == devicePlayerId } ?? []
@@ -42,10 +47,20 @@ final class GameSession: ObservableObject {
     if defaults.string(forKey: "displayName") == nil {
       defaults.set(name, forKey: "displayName")
     }
+    localAvatar = Self.loadAvatar(from: defaults)
 
     let id = DeviceIdentity.current()
     devicePlayerId = id
     localPlayerId = id
+  }
+
+  private static func loadAvatar(from defaults: UserDefaults) -> Drawing {
+    guard let data = defaults.data(forKey: avatarDefaultsKey),
+          let drawing = try? JSONDecoder().decode(Drawing.self, from: data),
+          !drawing.isEmpty else {
+      return .empty
+    }
+    return drawing
   }
 
   // MARK: - Lobby
@@ -58,6 +73,7 @@ final class GameSession: ObservableObject {
       id: devicePlayerId,
       name: localDisplayName,
       deviceId: devicePlayerId,
+      avatar: localAvatar,
       to: lobby
     )
     state = lobby
@@ -91,6 +107,7 @@ final class GameSession: ObservableObject {
     transport?.disconnect()
     transport = nil
     cancellables.removeAll()
+    cancelPhaseTimer()
     discoveredPeers = []
     peerDeviceIds = [:]
     handoff = nil
@@ -100,6 +117,16 @@ final class GameSession: ObservableObject {
     }
   }
 
+  func updateGameSettings(drawSeconds: Int, guessSeconds: Int) {
+    guard isHost, var current = state else { return }
+    current = GameEngine.updateSettings(
+      drawTimeLimitSeconds: drawSeconds,
+      guessTimeLimitSeconds: guessSeconds,
+      in: current
+    )
+    sync(current)
+  }
+
   func updateDisplayName(_ name: String) {
     let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(16))
     guard !trimmed.isEmpty else { return }
@@ -107,10 +134,25 @@ final class GameSession: ObservableObject {
     UserDefaults.standard.set(trimmed, forKey: "displayName")
     guard var current = state else { return }
     if isHost {
-      current = GameEngine.updateName(playerId: localPlayerId, name: trimmed, in: current)
+      current = GameEngine.updateName(playerId: devicePlayerId, name: trimmed, in: current)
       sync(current)
     } else {
-      send(.setName(playerId: localPlayerId, name: trimmed))
+      send(.setName(playerId: devicePlayerId, name: trimmed))
+    }
+  }
+
+  func updateAvatar(_ drawing: Drawing) {
+    guard !drawing.isEmpty else { return }
+    localAvatar = drawing
+    if let data = try? JSONEncoder().encode(drawing) {
+      UserDefaults.standard.set(data, forKey: Self.avatarDefaultsKey)
+    }
+    guard var current = state else { return }
+    if isHost {
+      current = GameEngine.updateAvatar(playerId: devicePlayerId, avatar: drawing, in: current)
+      sync(current)
+    } else {
+      send(.setAvatar(playerId: devicePlayerId, avatar: drawing))
     }
   }
 
@@ -214,6 +256,39 @@ final class GameSession: ObservableObject {
   private func sync(_ newState: GameState) {
     state = newState
     send(.syncState(newState))
+    schedulePhaseTimer()
+  }
+
+  private func cancelPhaseTimer() {
+    phaseTimerTask?.cancel()
+    phaseTimerTask = nil
+  }
+
+  /// Host waits for `phaseEndsAt`, then force-advances anyone who never submitted.
+  /// Slight delay after the deadline lets in-flight auto-submits land first.
+  private func schedulePhaseTimer() {
+    cancelPhaseTimer()
+    guard isHost,
+          let current = state,
+          current.phase == .drawing || current.phase == .guessing,
+          let endsAt = current.phaseEndsAt else { return }
+
+    let delay = max(0, endsAt.timeIntervalSinceNow) + 0.75
+    phaseTimerTask = Task { [weak self] in
+      let nanoseconds = UInt64(delay * 1_000_000_000)
+      try? await Task.sleep(nanoseconds: nanoseconds)
+      guard !Task.isCancelled else { return }
+      await self?.handlePhaseExpired()
+    }
+  }
+
+  private func handlePhaseExpired() {
+    guard isHost, var current = state else { return }
+    let previous = current
+    current = GameEngine.expireTurn(in: current)
+    guard current != previous else { return }
+    sync(current)
+    prepareLocalHandoffIfNeeded()
   }
 
   private func send(_ message: NetworkMessage) {
@@ -294,12 +369,13 @@ extension GameSession: MultipeerTransportDelegate {
     let peerDevice = peerDeviceIds[peerName] ?? peerName
 
     switch message {
-    case .hello(let playerId, let name):
+    case .hello(let playerId, let name, let avatar):
       peerDeviceIds[peerName] = playerId
       current = GameEngine.addPlayer(
         id: playerId,
         name: name,
         deviceId: playerId,
+        avatar: avatar,
         to: current
       )
       sync(current)
@@ -307,6 +383,11 @@ extension GameSession: MultipeerTransportDelegate {
     case .setName(let playerId, let name):
       guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
       current = GameEngine.updateName(playerId: playerId, name: name, in: current)
+      sync(current)
+
+    case .setAvatar(let playerId, let avatar):
+      guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
+      current = GameEngine.updateAvatar(playerId: playerId, avatar: avatar, in: current)
       sync(current)
 
     case .addPlayer(let playerId, let name):
@@ -351,7 +432,7 @@ extension GameSession: MultipeerTransportDelegate {
     switch sessionState {
     case .connected:
       if role == .joiner {
-        send(.hello(playerId: devicePlayerId, name: localDisplayName))
+        send(.hello(playerId: devicePlayerId, name: localDisplayName, avatar: localAvatar))
       }
     case .notConnected:
       if role == .host, var current = self.state {

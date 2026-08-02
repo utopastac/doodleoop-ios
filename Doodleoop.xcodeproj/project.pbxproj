@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0B0D67B965D8598DF2C60FFF /* GuessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */; };
+		0E4A7C2B91D84F6A8B3C1E20 /* GameSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* GameSettingsView.swift */; };
 		0FC6CD2C07129B8281998989 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E78A68452B445EE2B9A2E37 /* LobbyView.swift */; };
 		2CE4C18582B887EBD27C8148 /* DoodleoopApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */; };
 		33469B4EA2924FE188ECE3A3 /* GameModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */; };
@@ -22,6 +23,7 @@
 		98625166CED6AF17FBA06EC3 /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */; };
 		ED9D38960689EA53059435E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8E43D291F3A094221A19E7 /* Theme.swift */; };
 		F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */; };
+		A7E4C1D29B8F3056E1A2B4C0 /* PermanentMarker-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A60718293B4C5D /* PermanentMarker-Regular.ttf */; };
 		FE2F3CEAF4BD73D656F2DF9C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92FDA77B5436CAA55ADCBC13 /* HomeView.swift */; };
 		FFD40B4B5D01E2D243BD1A9D /* GameSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = D84840D7FCCB04D99D9836AF /* GameSession.swift */; };
 /* End PBXBuildFile section */
@@ -48,8 +50,10 @@
 		85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngine.swift; sourceTree = "<group>"; };
 		8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
 		92FDA77B5436CAA55ADCBC13 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* GameSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSettingsView.swift; sourceTree = "<group>"; };
 		A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessingView.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A60718293B4C5D /* PermanentMarker-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "PermanentMarker-Regular.ttf"; sourceTree = "<group>"; };
 		BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C260CDB7F36531A79B556B65 /* Doodleoop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Doodleoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		D84840D7FCCB04D99D9836AF /* GameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSession.swift; sourceTree = "<group>"; };
@@ -69,10 +73,19 @@
 				0AA9919AF1010F8FE1C0D385 /* Info.plist */,
 				9E82349AF48EEA17A9B4B04E /* Models */,
 				6F7641261673D9E5B10ADE6F /* Networking */,
+				C4D5E6F708192A3B4C5D6E7F /* Permanent_Marker */,
 				538609CAD13F07CCB032829F /* Theme */,
 				CE521F5F247D873D4CA6EC93 /* Views */,
 			);
 			path = Doodleoop;
+			sourceTree = "<group>";
+		};
+		C4D5E6F708192A3B4C5D6E7F /* Permanent_Marker */ = {
+			isa = PBXGroup;
+			children = (
+				B1C2D3E4F5A60718293B4C5D /* PermanentMarker-Regular.ttf */,
+			);
+			path = Permanent_Marker;
 			sourceTree = "<group>";
 		};
 		538609CAD13F07CCB032829F /* Theme */ = {
@@ -134,6 +147,7 @@
 			isa = PBXGroup;
 			children = (
 				FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */,
+				A1B2C3D4E5F60718293A4B5C /* GameSettingsView.swift */,
 				ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */,
 				92FDA77B5436CAA55ADCBC13 /* HomeView.swift */,
 				3E78A68452B445EE2B9A2E37 /* LobbyView.swift */,
@@ -218,6 +232,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */,
+				A7E4C1D29B8F3056E1A2B4C0 /* PermanentMarker-Regular.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -234,6 +249,7 @@
 				98625166CED6AF17FBA06EC3 /* DrawingView.swift in Sources */,
 				5B049B89F050D2018FF4F026 /* GameEngine.swift in Sources */,
 				33469B4EA2924FE188ECE3A3 /* GameModels.swift in Sources */,
+				0E4A7C2B91D84F6A8B3C1E20 /* GameSettingsView.swift in Sources */,
 				FFD40B4B5D01E2D243BD1A9D /* GameSession.swift in Sources */,
 				0B0D67B965D8598DF2C60FFF /* GuessingView.swift in Sources */,
 				FE2F3CEAF4BD73D656F2DF9C /* HomeView.swift in Sources */,
@@ -317,7 +333,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -375,7 +391,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";

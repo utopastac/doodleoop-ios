@@ -28,6 +28,7 @@ struct ContentView: View {
         HandoffOverlay()
       }
     }
+    .environment(\.font, Theme.Fonts.body)
   }
 }
 
