@@ -20,6 +20,7 @@
 		5DEC14BB7A5F6146F4F2DF04 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = C265374CBB050E4CF31E3798 /* Buttons.swift */; };
 		607FB4669AA4B9D3C2BEE49C /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */; };
 		66D4A40411E01725E2F2B448 /* GameSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35E271117664FEFD32A46F15 /* GameSettingsView.swift */; };
+		6AF0CF9DAC679C2DFAD02392 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */; };
 		79FBF6580C3DC193104BF41C /* NetworkMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD68ECCF5EFF6B59975F7558 /* NetworkMessage.swift */; };
 		7BED6908D2648759E3138893 /* RevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */; };
 		7FF714B66A84E6E07C2F8518 /* GameEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */; };
@@ -49,6 +50,7 @@
 		0AA9919AF1010F8FE1C0D385 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0C197988DB66529732A5329B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0F67899542B16CE6EA5FD931 /* SpaceMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Regular.ttf"; sourceTree = "<group>"; };
+		3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsView.swift; sourceTree = "<group>"; };
 		35E271117664FEFD32A46F15 /* GameSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSettingsView.swift; sourceTree = "<group>"; };
 		3C8E43D291F3A094221A19E7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3E78A68452B445EE2B9A2E37 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
@@ -65,7 +67,7 @@
 		A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessingView.swift; sourceTree = "<group>"; };
 		BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		C260CDB7F36531A79B556B65 /* Doodleoop.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Doodleoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C260CDB7F36531A79B556B65 /* Doodleoop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Doodleoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C265374CBB050E4CF31E3798 /* Buttons.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Buttons.swift; sourceTree = "<group>"; };
 		CC10F2CA41DE3E9D91A872FB /* ViewPreviewMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewPreviewMenuView.swift; sourceTree = "<group>"; };
 		D84840D7FCCB04D99D9836AF /* GameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSession.swift; sourceTree = "<group>"; };
@@ -163,6 +165,7 @@
 		CE521F5F247D873D4CA6EC93 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */,
 				FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */,
 				35E271117664FEFD32A46F15 /* GameSettingsView.swift */,
 				ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */,
@@ -221,6 +224,8 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
 			};
 			buildConfigurationList = 599C91D1B12D70E2004F34A5 /* Build configuration list for PBXProject "Doodleoop" */;
 			developmentRegion = en;
@@ -261,6 +266,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6AF0CF9DAC679C2DFAD02392 /* AppSettingsView.swift in Sources */,
 				5DEC14BB7A5F6146F4F2DF04 /* Buttons.swift in Sources */,
 				8718E0FDBEC7EC93635F044C /* ContentView.swift in Sources */,
 				607FB4669AA4B9D3C2BEE49C /* DeviceIdentity.swift in Sources */,
@@ -447,7 +453,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F472GKBUAR;
 				INFOPLIST_FILE = Doodleoop/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -467,7 +472,6 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = F472GKBUAR;
 				INFOPLIST_FILE = Doodleoop/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

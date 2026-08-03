@@ -57,7 +57,7 @@ struct RevealView: View {
       }
     }
     .padding(.top, Theme.Spacing.s5)
-    .paperBackground(.plain)
+    .paperBackground()
     .pageMargins()
   }
 
@@ -95,7 +95,7 @@ struct RoundOverView: View {
       Spacer()
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .paperBackground(.plain)
+    .paperBackground()
     .pageMargins()
   }
 }

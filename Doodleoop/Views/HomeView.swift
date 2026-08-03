@@ -5,13 +5,18 @@ struct HomeView: View {
   @State private var nameDraft = ""
   @State private var isEditingAvatar = false
   @State private var showRules = false
+  @State private var showSettings = false
   @State private var showViewPreviews = false
   @State private var pendingPreview: ViewPreview?
+
+  private var showingHome: Bool {
+    session.hasSavedAvatar && !isEditingAvatar
+  }
 
   var body: some View {
     NavigationStack {
       Group {
-        if session.hasSavedAvatar && !isEditingAvatar {
+        if showingHome {
           homeContent
         } else {
           AvatarSetupView(
@@ -30,7 +35,13 @@ struct HomeView: View {
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .paperBackground(.plain)
+      .background {
+        (showingHome ? Theme.Background.broadsheet : Theme.Paper.cream)
+          .ignoresSafeArea()
+      }
+      .sheet(isPresented: $showSettings) {
+        AppSettingsView()
+      }
       .sheet(isPresented: $showViewPreviews, onDismiss: {
         if let pendingPreview {
           session.loadPreview(pendingPreview)
@@ -124,14 +135,29 @@ struct HomeView: View {
 
         Spacer(minLength: Theme.Spacing.s5)
 
-        // Rules — band height == button height
-        Button(DoodleLabel.bracketed("The rules")) {
-          showRules = true
+        // Rules + settings — centered row matching Figma
+        HStack(spacing: Theme.Spacing.s2) {
+          Button(DoodleLabel.bracketed("The rules")) {
+            showRules = true
+          }
+          .doodleButton(.tertiary)
+          .frame(width: 153)
+
+          Button {
+            showSettings = true
+          } label: {
+            Image(systemName: "slider.horizontal.3")
+              .font(.system(size: Theme.Sizing.iconMd, weight: .semibold))
+              .foregroundStyle(Theme.Text.primary)
+              .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+              .background(Theme.Paper.white)
+              .clipShape(RoundedRectangle(cornerRadius: 2, style: .circular))
+          }
+          .buttonStyle(.plain)
+          .accessibilityLabel("Settings")
         }
-        .doodleButton(.tertiary)
         .frame(maxWidth: .infinity)
         .frame(height: rulesHeight)
-        .pageHorizontalPadding()
         .gridBand()
 
         Spacer(minLength: Theme.Spacing.s7)
@@ -192,7 +218,7 @@ struct HomeAvatarHero<NameContent: View>: View {
     }
     .padding(Theme.Spacing.s6)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .paperSurface(.crosses, in: Circle())
+    .paperSurface(in: Circle())
   }
 }
 

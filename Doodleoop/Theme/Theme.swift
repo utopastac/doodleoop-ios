@@ -9,6 +9,10 @@ enum Theme {
     static let cream = Color(red: 0.961, green: 0.945, blue: 0.910)
     static let beige = Color(red: 0.922, green: 0.898, blue: 0.855)
     static let tan = Color(red: 0.863, green: 0.835, blue: 0.784)
+    /// Aged parchment — warmer and a touch duskier than cream.
+    static let parchment = Color(red: 0.910, green: 0.855, blue: 0.745)
+    /// `paper/broadsheet` — warm newsprint peach.
+    static let broadsheet = Color(red: 0.973, green: 0.839, blue: 0.714)
   }
 
   enum Dot {
@@ -46,6 +50,8 @@ enum Theme {
     static let elevated = Paper.tan
     /// Sheet / elevated white paper (also used under crosses and dots).
     static let sheet = Paper.white
+    /// `paper/broadsheet` — warm newsprint peach.
+    static let broadsheet = Paper.broadsheet
   }
 
   enum Grid {
@@ -114,6 +120,8 @@ enum Theme {
     static let inputHeight: CGFloat = 40
     static let buttonHeight: CGFloat = 36
     static let dotGridCell: CGFloat = 20
+    /// Pitch between ruled-paper horizontal lines.
+    static let ruleSpacing: CGFloat = 28
   }
 
   enum Borders {

@@ -65,7 +65,7 @@ struct GameSettingsView: View {
     .navigationTitle("Game settings")
     .navigationBarTitleDisplayMode(.inline)
     .scrollContentBackground(.hidden)
-    .paperBackground(.plain)
+    .paperBackground()
     .pageMargins()
     .onAppear {
       drawSeconds = Double(state.drawTimeLimitSeconds)

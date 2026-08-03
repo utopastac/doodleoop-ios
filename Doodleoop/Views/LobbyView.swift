@@ -104,8 +104,8 @@ struct LobbyView: View {
         .doodleButton(.tertiary)
       }
       .padding(.horizontal, Theme.Layout.pageMargin)
-      .paperBackground(.plain)
+      .paperBackground()
       .pageMargins()
-    }
   }
+}
 }

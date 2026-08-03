@@ -311,7 +311,7 @@ enum StrokeRenderer {
     _ drawing: Drawing,
     size: CGSize,
     scale: CGFloat,
-    paperStyle: PaperStyle = .crosses
+    paperStyle: PaperStyle = .plain
   ) -> UIImage? {
     guard size.width > 1, size.height > 1 else { return nil }
     let content = ZStack {
@@ -379,11 +379,12 @@ struct DrawingCanvas: View {
   var tool: DrawingTool
   var colorHex: String
   var lineWidth: Double
-  /// Sheet paper behind the ink (same as the home avatar circle by default).
-  var paperStyle: PaperStyle = .crosses
+  /// Optional override; defaults to the app-wide paper preference.
+  var paperStyle: PaperStyle? = nil
   var onWillCommitStroke: (() -> Void)?
 
   @Environment(\.displayScale) private var displayScale
+  @Environment(\.paperStyle) private var preferredPaperStyle
 
   @State private var currentStroke: Stroke?
   @State private var lastSampleTime: TimeInterval?
@@ -392,6 +393,8 @@ struct DrawingCanvas: View {
   @State private var bakedImage: UIImage?
   @State private var bakedStrokeCount = 0
   @State private var canvasSize: CGSize = .zero
+
+  private var resolvedPaperStyle: PaperStyle { paperStyle ?? preferredPaperStyle }
 
   var body: some View {
     let isLiveErasing = currentStroke?.tool.isEraser == true
@@ -419,7 +422,7 @@ struct DrawingCanvas: View {
         }
       }
     }
-    .paperSurface(paperStyle, in: Rectangle())
+    .paperSurface(resolvedPaperStyle, in: Rectangle())
     .background {
       GeometryReader { geo in
         Color.clear
@@ -429,6 +432,11 @@ struct DrawingCanvas: View {
     }
     .onChange(of: drawing) { _, newDrawing in
       reconcileBake(with: newDrawing)
+    }
+    .onChange(of: resolvedPaperStyle) { _, _ in
+      bakedImage = nil
+      bakedStrokeCount = -1
+      reconcileBake(with: drawing)
     }
     .overlay {
       // UIKit coalesced touches keep fast strokes dense; SwiftUI DragGesture cannot.
@@ -548,7 +556,7 @@ struct DrawingCanvas: View {
       drawing,
       size: canvasSize,
       scale: displayScale,
-      paperStyle: paperStyle
+      paperStyle: resolvedPaperStyle
     )
     bakedStrokeCount = drawing.strokes.count
   }
@@ -841,7 +849,7 @@ struct DrawingView: View {
       .padding(.bottom, Theme.Spacing.s3)
     }
     .padding(.top, Theme.Spacing.s4)
-    .paperBackground(.plain)
+    .paperBackground()
     .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)

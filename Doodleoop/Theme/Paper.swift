@@ -4,25 +4,67 @@ import CoreText
 
 // MARK: - Paper styles
 
-/// Paper fills from the design system: plain cream, white with crosses, white with dots.
-enum PaperStyle: Equatable {
-  /// `paper/cream` — page / ruled background.
+/// Paper fills from the design system / appearance settings.
+enum PaperStyle: String, CaseIterable, Identifiable, Equatable {
+  /// `paper/cream` — page / plain background.
   case plain
-  /// `paper/crosses` — white sheet with plus-mark grid (`size/dot-grid-cell`).
-  case crosses
   /// `paper/dots` — white sheet with dot grid (`size/dot-grid-cell`).
   case dots
+  /// `paper/crosses` — white sheet with plus-mark grid (`size/dot-grid-cell`).
+  case crosses
+  /// White sheet with horizontal writing rules.
+  case ruled
+  /// Warm aged parchment with soft grain and mottling.
+  case parchment
+  /// Photo texture asset (`PaperTexture`).
+  case textured
+
+  static let storageKey = "appearance.paperStyle"
+
+  var id: String { rawValue }
+
+  var displayName: String {
+    switch self {
+    case .plain: "Plain"
+    case .dots: "Dots"
+    case .crosses: "Crosses"
+    case .ruled: "Rules"
+    case .parchment: "Parchment"
+    case .textured: "Textured"
+    }
+  }
 
   var fill: Color {
     switch self {
-    case .plain: Theme.Paper.cream
-    case .crosses, .dots: Theme.Paper.white
+    case .plain, .textured: Theme.Paper.cream
+    case .crosses, .dots, .ruled: Theme.Paper.white
+    case .parchment: Theme.Paper.parchment
     }
   }
 }
 
+private struct PaperStyleKey: EnvironmentKey {
+  static let defaultValue: PaperStyle = .plain
+}
+
+extension EnvironmentValues {
+  /// Preferred paper for drawing surfaces (canvases, avatar sheets) — not page chrome.
+  var paperStyle: PaperStyle {
+    get { self[PaperStyleKey.self] }
+    set { self[PaperStyleKey.self] = newValue }
+  }
+}
+
 struct PaperFill: View {
-  var style: PaperStyle = .plain
+  /// When set, ignores the environment preference (previews / explicit swatches).
+  private var explicitStyle: PaperStyle?
+  @Environment(\.paperStyle) private var preferredStyle
+
+  init(style: PaperStyle? = nil) {
+    self.explicitStyle = style
+  }
+
+  private var style: PaperStyle { explicitStyle ?? preferredStyle }
 
   var body: some View {
     ZStack {
@@ -34,8 +76,28 @@ struct PaperFill: View {
         CrossGridPattern()
       case .dots:
         DotGridPattern()
+      case .ruled:
+        HorizontalRulesPattern()
+      case .parchment:
+        ParchmentTexture()
+      case .textured:
+        TexturedPaperImage()
       }
     }
+  }
+}
+
+/// Full-bleed paper photo from the asset catalog.
+private struct TexturedPaperImage: View {
+  var body: some View {
+    GeometryReader { geo in
+      Image("PaperTexture")
+        .resizable()
+        .scaledToFill()
+        .frame(width: geo.size.width, height: geo.size.height)
+        .clipped()
+    }
+    .allowsHitTesting(false)
   }
 }
 
@@ -89,6 +151,126 @@ struct DotGridPattern: View {
       }
     }
     .allowsHitTesting(false)
+  }
+}
+
+/// Horizontal notebook rules on a `size/rule-spacing` pitch.
+struct HorizontalRulesPattern: View {
+  var spacing: CGFloat = Theme.Sizing.ruleSpacing
+  var color: Color = Theme.Grid.dot
+  /// Optional left margin rule (classic notebook gutter).
+  var marginRule: Color? = Theme.Accent.muted.opacity(0.55)
+  var marginX: CGFloat = Theme.Spacing.s7
+
+  var body: some View {
+    Canvas { context, size in
+      var rules = Path()
+      var y: CGFloat = spacing
+      while y < size.height {
+        rules.move(to: CGPoint(x: 0, y: y))
+        rules.addLine(to: CGPoint(x: size.width, y: y))
+        y += spacing
+      }
+      context.stroke(rules, with: .color(color), lineWidth: Theme.Borders.hairline)
+
+      if let marginRule {
+        var margin = Path()
+        margin.move(to: CGPoint(x: marginX, y: 0))
+        margin.addLine(to: CGPoint(x: marginX, y: size.height))
+        context.stroke(margin, with: .color(marginRule), lineWidth: Theme.Borders.thin)
+      }
+    }
+    .allowsHitTesting(false)
+  }
+}
+
+/// Soft grain, mottling, and edge wear for aged parchment.
+struct ParchmentTexture: View {
+  var body: some View {
+    GeometryReader { geo in
+      let size = geo.size
+      let vignetteRadius = hypot(size.width, size.height) * 0.55
+
+      ZStack {
+        // Warm directional wash — sun-faded center, duskier corners.
+        LinearGradient(
+          colors: [
+            Theme.Paper.cream.opacity(0.55),
+            Theme.Paper.tan.opacity(0.35),
+            Theme.Paper.beige.opacity(0.45),
+          ],
+          startPoint: .topLeading,
+          endPoint: .bottomTrailing
+        )
+
+        RadialGradient(
+          colors: [
+            Color.clear,
+            Theme.Ink.medium.opacity(0.08),
+          ],
+          center: .center,
+          startRadius: min(size.width, size.height) * 0.15,
+          endRadius: vignetteRadius
+        )
+
+        Canvas { context, canvasSize in
+          // Soft age blotches.
+          let blotches: [(CGFloat, CGFloat, CGFloat, CGFloat)] = [
+            (0.18, 0.22, 0.42, 0.045),
+            (0.72, 0.18, 0.36, 0.04),
+            (0.55, 0.58, 0.55, 0.05),
+            (0.28, 0.78, 0.38, 0.035),
+            (0.82, 0.72, 0.32, 0.04),
+            (0.12, 0.55, 0.28, 0.03),
+          ]
+          for (nx, ny, scale, opacity) in blotches {
+            let w = canvasSize.width * scale
+            let h = canvasSize.height * scale * 0.7
+            let rect = CGRect(
+              x: canvasSize.width * nx - w / 2,
+              y: canvasSize.height * ny - h / 2,
+              width: w,
+              height: h
+            )
+            context.fill(
+              Path(ellipseIn: rect),
+              with: .color(Theme.Paper.tan.opacity(opacity))
+            )
+          }
+
+          // Fine fiber grain — deterministic so it doesn't shimmer.
+          let step: CGFloat = 5
+          var y: CGFloat = 0
+          while y < canvasSize.height {
+            var x: CGFloat = 0
+            while x < canvasSize.width {
+              let n = parchmentNoise(x: x, y: y)
+              if n > 0.72 {
+                let alpha = (n - 0.72) * 0.35
+                let speck = CGRect(x: x, y: y, width: 1.2, height: 1.2)
+                context.fill(
+                  Path(ellipseIn: speck),
+                  with: .color(Theme.Dot.medium.opacity(alpha))
+                )
+              }
+              x += step
+            }
+            y += step
+          }
+        }
+      }
+    }
+    .allowsHitTesting(false)
+  }
+
+  /// Stable 0…1 noise from position.
+  private func parchmentNoise(x: CGFloat, y: CGFloat) -> CGFloat {
+    let ix = Int(x * 12.9898 + y * 78.233)
+    var n = UInt32(bitPattern: Int32(truncatingIfNeeded: ix &* 1_597_334_677))
+    n ^= n &<< 13
+    n ^= n &>> 17
+    n ^= n &<< 5
+    return CGFloat(n % 10_000) / 10_000
   }
 }
 
@@ -249,6 +431,7 @@ private struct PaperBackgroundModifier: ViewModifier {
 
   func body(content: Content) -> some View {
     content.background {
+      // Always explicit so page chrome never picks up the drawing-paper preference.
       let fill = PaperFill(style: style)
       if ignoresSafeArea {
         fill.ignoresSafeArea()
@@ -256,6 +439,18 @@ private struct PaperBackgroundModifier: ViewModifier {
         fill
       }
     }
+  }
+}
+
+private struct PaperSurfaceModifier<S: Shape>: ViewModifier {
+  var style: PaperStyle?
+  var shape: S
+  @Environment(\.paperStyle) private var preferredStyle
+
+  func body(content: Content) -> some View {
+    content
+      .background { PaperFill(style: style ?? preferredStyle) }
+      .clipShape(shape)
   }
 }
 
@@ -275,15 +470,14 @@ private struct GridBandModifier: ViewModifier {
 }
 
 extension View {
-  /// Fill behind this view with a paper style (plain, crosses, or dots).
+  /// Page chrome fill — always cream/plain by default; not the drawing-paper preference.
   func paperBackground(_ style: PaperStyle = .plain, ignoresSafeArea: Bool = true) -> some View {
     modifier(PaperBackgroundModifier(style: style, ignoresSafeArea: ignoresSafeArea))
   }
 
-  /// Paper fill clipped to a shape — drawing sheets, avatar circles, etc.
-  func paperSurface<S: Shape>(_ style: PaperStyle = .crosses, in shape: S) -> some View {
-    background { PaperFill(style: style) }
-      .clipShape(shape)
+  /// Drawing-surface paper (canvases, avatar circles) — uses the preferred style when omitted.
+  func paperSurface<S: Shape>(_ style: PaperStyle? = nil, in shape: S) -> some View {
+    modifier(PaperSurfaceModifier(style: style, shape: shape))
   }
 
   /// Always-on left/right grid rails at `Theme.Layout.pageMargin`.

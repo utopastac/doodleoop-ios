@@ -68,7 +68,7 @@ struct GuessingView: View {
       )
     }
     .padding(.top, Theme.Spacing.s5)
-    .paperBackground(.plain)
+    .paperBackground()
     .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
@@ -112,7 +112,7 @@ struct ReadOnlyDrawingView: View {
     Canvas { context, size in
       StrokeRenderer.drawDrawing(drawing, in: &context, size: size)
     }
-    .paperSurface(.crosses, in: Rectangle())
+    .paperSurface(in: Rectangle())
   }
 }
 
@@ -140,7 +140,7 @@ struct AvatarBadge: View {
             widthScale: scale
           )
         }
-        .paperSurface(.crosses, in: Circle())
+        .paperSurface(in: Circle())
       }
     }
     .frame(width: size, height: size)

@@ -65,7 +65,7 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     case .roundOver: return "Loop complete celebration"
     case .handoffOverlay: return "Full-screen seat handoff gate"
     case .avatarSetup: return "First-run doodle avatar"
-    case .paperStyles: return "Plain, crosses, and dots sheets"
+    case .paperStyles: return "Plain, dots, crosses, rules, parchment, textured"
     }
   }
 
@@ -138,7 +138,7 @@ struct ViewPreviewMenuView: View {
               sheetPreview = nil
             }
           )
-          .paperBackground(.plain)
+          .paperBackground()
         case .paperStyles:
           PaperStylesPreviewView()
         default:
@@ -164,13 +164,13 @@ struct PaperStylesPreviewView: View {
     NavigationStack {
       ScrollView {
         VStack(spacing: Theme.Spacing.s5) {
-          paperSwatch(title: "Plain", style: .plain)
-          paperSwatch(title: "Crosses", style: .crosses)
-          paperSwatch(title: "Dots", style: .dots)
+          ForEach(PaperStyle.allCases) { style in
+            paperSwatch(title: style.displayName, style: style)
+          }
         }
         .padding(Theme.Spacing.s5)
       }
-      .paperBackground(.plain)
+      .paperBackground()
       .navigationTitle("Paper Styles")
       .navigationBarTitleDisplayMode(.inline)
       .toolbar {
