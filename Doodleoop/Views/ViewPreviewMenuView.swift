@@ -65,7 +65,7 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     case .roundOver: return "Loop complete celebration"
     case .handoffOverlay: return "Full-screen seat handoff gate"
     case .avatarSetup: return "First-run doodle avatar"
-    case .paperStyles: return "Plain cream vs crosses sheet"
+    case .paperStyles: return "Plain, crosses, and dots sheets"
     }
   }
 
@@ -166,6 +166,7 @@ struct PaperStylesPreviewView: View {
         VStack(spacing: Theme.Spacing.s5) {
           paperSwatch(title: "Plain", style: .plain)
           paperSwatch(title: "Crosses", style: .crosses)
+          paperSwatch(title: "Dots", style: .dots)
         }
         .padding(Theme.Spacing.s5)
       }

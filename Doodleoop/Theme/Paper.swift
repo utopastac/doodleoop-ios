@@ -4,17 +4,19 @@ import CoreText
 
 // MARK: - Paper styles
 
-/// The two paper fills from the design system: plain cream, and white with crosses.
+/// Paper fills from the design system: plain cream, white with crosses, white with dots.
 enum PaperStyle: Equatable {
   /// `paper/cream` — page / ruled background.
   case plain
   /// `paper/crosses` — white sheet with plus-mark grid (`size/dot-grid-cell`).
   case crosses
+  /// `paper/dots` — white sheet with dot grid (`size/dot-grid-cell`).
+  case dots
 
   var fill: Color {
     switch self {
     case .plain: Theme.Paper.cream
-    case .crosses: Theme.Paper.white
+    case .crosses, .dots: Theme.Paper.white
     }
   }
 }
@@ -25,8 +27,13 @@ struct PaperFill: View {
   var body: some View {
     ZStack {
       style.fill
-      if style == .crosses {
+      switch style {
+      case .plain:
+        EmptyView()
+      case .crosses:
         CrossGridPattern()
+      case .dots:
+        DotGridPattern()
       }
     }
   }
@@ -55,6 +62,31 @@ struct CrossGridPattern: View {
         y += cell
       }
       context.stroke(path, with: .color(color), lineWidth: Theme.Borders.thin)
+    }
+    .allowsHitTesting(false)
+  }
+}
+
+/// Repeating dots on a `size/dot-grid-cell` pitch (`paper/dots`).
+struct DotGridPattern: View {
+  var cell: CGFloat = Theme.Sizing.dotGridCell
+  var color: Color = Theme.Grid.dot
+  /// Dot diameter.
+  var diameter: CGFloat = 2
+
+  var body: some View {
+    Canvas { context, size in
+      let radius = diameter / 2
+      var y: CGFloat = cell / 2
+      while y < size.height + cell {
+        var x: CGFloat = cell / 2
+        while x < size.width + cell {
+          let rect = CGRect(x: x - radius, y: y - radius, width: diameter, height: diameter)
+          context.fill(Path(ellipseIn: rect), with: .color(color))
+          x += cell
+        }
+        y += cell
+      }
     }
     .allowsHitTesting(false)
   }
@@ -243,7 +275,7 @@ private struct GridBandModifier: ViewModifier {
 }
 
 extension View {
-  /// Fill behind this view with a paper style (plain cream or crosses).
+  /// Fill behind this view with a paper style (plain, crosses, or dots).
   func paperBackground(_ style: PaperStyle = .plain, ignoresSafeArea: Bool = true) -> some View {
     modifier(PaperBackgroundModifier(style: style, ignoresSafeArea: ignoresSafeArea))
   }

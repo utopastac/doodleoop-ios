@@ -44,7 +44,7 @@ enum Theme {
     static let secondary = Paper.cream
     static let tertiary = Paper.beige
     static let elevated = Paper.tan
-    /// Sheet / elevated white paper (also used under crosses).
+    /// Sheet / elevated white paper (also used under crosses and dots).
     static let sheet = Paper.white
   }
 
