@@ -14,46 +14,51 @@ struct GuessingView: View {
 
     let state = session.state
 
-    VStack(spacing: 16) {
+    VStack(spacing: Theme.Spacing.s4) {
       HStack(alignment: .firstTextBaseline) {
         Text("Guess")
-          .font(Theme.Fonts.largeTitle)
+          .themeText(.heading)
+          .foregroundStyle(Theme.Text.primary)
         Spacer()
         PhaseCountdown(endsAt: state?.phaseEndsAt)
       }
-      .padding(.horizontal, 20)
+      .pageHorizontalPadding()
 
       Text("What is this a drawing of?")
-        .foregroundStyle(.secondary)
+        .themeText(.label)
+        .foregroundStyle(Theme.Text.secondary)
 
       if let drawing {
         ReadOnlyDrawingView(drawing: drawing)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .padding(.horizontal, 16)
+          .padding(.horizontal, Theme.Spacing.s4)
       } else {
         Spacer()
         ProgressView("Waiting for drawing…")
+          .tint(Theme.Accent.default)
         Spacer()
       }
 
       TextField("Your guess", text: $guess)
+        .themeText(.label)
         .textFieldStyle(.roundedBorder)
-        .padding(.horizontal, 20)
+        .pageHorizontalPadding()
 
-      Button("Submit guess") {
+      Button(DoodleLabel.bracketed("Submit guess")) {
         session.submitGuess(guess)
         guess = ""
       }
-      .buttonStyle(PrimaryButtonStyle(color: Theme.teal))
-      .padding(.horizontal, 20)
-      .padding(.bottom, 12)
+      .doodleButton(.primary)
+      .pageHorizontalPadding()
+      .padding(.bottom, Theme.Spacing.s3)
       .disabled(
         guess.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
           || (state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
       )
     }
-    .padding(.top, 20)
-    .background(Theme.paper.ignoresSafeArea())
+    .padding(.top, Theme.Spacing.s5)
+    .paperBackground(.plain)
+    .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
     }
@@ -83,24 +88,24 @@ struct ReadOnlyDrawingView: View {
     Canvas { context, size in
       StrokeRenderer.drawDrawing(drawing, in: &context, size: size)
     }
-    .background(Color.white)
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .background { PaperFill(style: .crosses) }
+    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
   }
 }
 
 struct AvatarBadge: View {
   let drawing: Drawing
-  var size: CGFloat = 40
+  var size: CGFloat = Theme.Sizing.avatarMd
 
   var body: some View {
     Group {
       if drawing.isEmpty {
         Circle()
-          .fill(Theme.ink.opacity(0.08))
+          .fill(Theme.Background.tertiary)
           .overlay {
             Image(systemName: "person.fill")
               .font(.system(size: size * 0.4))
-              .foregroundStyle(Theme.ink.opacity(0.35))
+              .foregroundStyle(Theme.Text.tertiary)
           }
       } else {
         Canvas { context, canvasSize in
@@ -112,11 +117,11 @@ struct AvatarBadge: View {
             widthScale: scale
           )
         }
-        .background(Color.white)
+        .background { PaperFill(style: .crosses) }
         .clipShape(Circle())
       }
     }
     .frame(width: size, height: size)
-    .overlay(Circle().stroke(Theme.ink.opacity(0.12), lineWidth: 1))
+    .overlay(Circle().stroke(Theme.Stroke.subtle, lineWidth: Theme.Borders.thin))
   }
 }

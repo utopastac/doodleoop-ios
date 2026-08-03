@@ -4,6 +4,9 @@ struct HomeView: View {
   @EnvironmentObject private var session: GameSession
   @State private var nameDraft = ""
   @State private var isEditingAvatar = false
+  @State private var showRules = false
+  @State private var showViewPreviews = false
+  @State private var pendingPreview: ViewPreview?
 
   var body: some View {
     NavigationStack {
@@ -27,54 +30,171 @@ struct HomeView: View {
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .background(Theme.paper.ignoresSafeArea())
+      .paperBackground(.plain)
+      .sheet(isPresented: $showViewPreviews, onDismiss: {
+        if let pendingPreview {
+          session.loadPreview(pendingPreview)
+          self.pendingPreview = nil
+        }
+      }) {
+        ViewPreviewMenuView { preview in
+          session.updateDisplayName(nameDraft.isEmpty ? session.localDisplayName : nameDraft)
+          pendingPreview = preview
+          showViewPreviews = false
+        }
+      }
     }
   }
 
   private var homeContent: some View {
-    VStack(spacing: 28) {
-      Spacer()
+    let margin = Theme.Layout.pageMargin
+    let buttonHeight = DoodleButtonKind.primary.height
+    let rulesHeight = DoodleButtonKind.tertiary.height
 
-      Text("Doodleoop")
-        .font(Theme.Fonts.permanentMarker(size: 48))
-        .foregroundStyle(Theme.ink)
+    return GeometryReader { geo in
+      let contentWidth = geo.size.width - margin * 2
 
-      Text("Draw, pass left, guess — pictorial Chinese whispers.")
-        .font(Theme.Fonts.title3)
-        .multilineTextAlignment(.center)
-        .foregroundStyle(Theme.ink.opacity(0.7))
-        .padding(.horizontal, 32)
+      VStack(spacing: 0) {
+        Spacer(minLength: 0)
 
-      Button {
-        isEditingAvatar = true
-      } label: {
-        AvatarBadge(drawing: session.localAvatar, size: 96)
-      }
-      .buttonStyle(.plain)
-      .accessibilityLabel("Edit avatar")
+        // Brand title band — rails hug glyph ink, not the font box
+        let brand = DoodleLabel.bracketed("Doodloop")
+        Text(brand)
+          .themeText(.body)
+          .foregroundStyle(Theme.Text.primary)
+          .frame(maxWidth: .infinity)
+          .gridBand(crop: .glyphs(text: brand, style: .body))
+          .onLongPressGesture {
+            showViewPreviews = true
+          }
 
-      TextField("Your name", text: $nameDraft)
-        .textFieldStyle(.roundedBorder)
-        .padding(.horizontal, 40)
-        .onAppear { nameDraft = session.localDisplayName }
-        .onSubmit { session.updateDisplayName(nameDraft) }
+        // Headline sits in the open field between title and hero bands
+        Text("A drawing relay party game")
+          .themeText(.display)
+          .multilineTextAlignment(.center)
+          .foregroundStyle(Theme.Text.primary)
+          .frame(maxWidth: .infinity)
+          .pageHorizontalPadding()
+          .padding(.vertical, Theme.Spacing.s6)
+          .onLongPressGesture {
+            showViewPreviews = true
+          }
 
-      VStack(spacing: 12) {
-        Button("Create game") {
-          session.updateDisplayName(nameDraft)
-          session.hostGame()
+        Spacer(minLength: Theme.Spacing.s2)
+
+        // Avatar flush to the page margin rails (exact content width)
+        HomeAvatarHero(drawing: session.localAvatar) {
+          TextField("Your name", text: $nameDraft)
+            .themeText(.subheading)
+            .multilineTextAlignment(.center)
+            .foregroundStyle(Theme.Text.primary)
+            .onAppear { nameDraft = session.localDisplayName }
+            .onSubmit { session.updateDisplayName(nameDraft) }
+        } onDrawingTap: {
+          isEditingAvatar = true
         }
-        .buttonStyle(PrimaryButtonStyle(color: Theme.coral))
+        .frame(width: contentWidth, height: contentWidth)
+        .frame(maxWidth: .infinity)
+        .layoutPriority(1)
+        .accessibilityElement(children: .contain)
+        .gridBand()
 
-        Button("Join game") {
-          session.updateDisplayName(nameDraft)
-          session.startBrowsing()
+        Spacer(minLength: Theme.Spacing.s6)
+
+        // Create / Join — band height == button height
+        HStack(spacing: 0) {
+          Button(DoodleLabel.bracketed("Create game")) {
+            session.updateDisplayName(nameDraft)
+            session.hostGame()
+          }
+          .doodleButton(.primary)
+
+          GridLine(axis: .vertical)
+            .frame(maxHeight: .infinity)
+
+          Button(DoodleLabel.bracketed("Join game")) {
+            session.updateDisplayName(nameDraft)
+            session.startBrowsing()
+          }
+          .doodleButton(.secondary)
         }
-        .buttonStyle(PrimaryButtonStyle(color: Theme.teal))
-      }
-      .padding(.horizontal, 40)
+        .frame(height: buttonHeight)
+        .pageHorizontalPadding()
+        .gridBand()
 
-      Spacer()
+        Spacer(minLength: Theme.Spacing.s5)
+
+        // Rules — band height == button height
+        Button(DoodleLabel.bracketed("The rules")) {
+          showRules = true
+        }
+        .doodleButton(.tertiary)
+        .frame(maxWidth: .infinity)
+        .frame(height: rulesHeight)
+        .pageHorizontalPadding()
+        .gridBand()
+
+        Spacer(minLength: Theme.Spacing.s7)
+      }
+      .frame(width: geo.size.width, height: geo.size.height)
+    }
+    .pageMargins()
+    .alert("The rules", isPresented: $showRules) {
+      Button("Got it", role: .cancel) {}
+    } message: {
+      Text("Draw the category, pass left, guess what’s in front of you, then draw that guess. Keep going until the loop comes back around.")
+    }
+  }
+}
+
+struct HomeAvatarHero<NameContent: View>: View {
+  let drawing: Drawing
+  var onDrawingTap: (() -> Void)?
+  @ViewBuilder var nameContent: () -> NameContent
+
+  init(
+    drawing: Drawing,
+    @ViewBuilder nameContent: @escaping () -> NameContent,
+    onDrawingTap: (() -> Void)? = nil
+  ) {
+    self.drawing = drawing
+    self.nameContent = nameContent
+    self.onDrawingTap = onDrawingTap
+  }
+
+  var body: some View {
+    ZStack {
+      PaperFill(style: .crosses)
+        .clipShape(Circle())
+
+      VStack(spacing: Theme.Spacing.s5) {
+        Group {
+          if drawing.isEmpty {
+            Image(systemName: "person.fill")
+              .font(.system(size: 64, weight: .regular))
+              .foregroundStyle(Theme.Text.tertiary)
+          } else {
+            Canvas { context, canvasSize in
+              let scale = canvasSize.width / 280
+              StrokeRenderer.drawDrawing(
+                drawing,
+                in: &context,
+                size: canvasSize,
+                widthScale: scale
+              )
+            }
+          }
+        }
+        .frame(maxWidth: 160, maxHeight: 180)
+        .contentShape(Rectangle())
+        .onTapGesture { onDrawingTap?() }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("Edit avatar")
+
+        nameContent()
+          .frame(maxWidth: 200)
+      }
+      .padding(Theme.Spacing.s6)
     }
   }
 }
@@ -88,6 +208,7 @@ struct AvatarSetupView: View {
   let onSave: (Drawing) -> Void
 
   @State private var drawing = Drawing.empty
+  @State private var undoStack = DrawingUndoStack()
   @State private var tool: DrawingTool = .pen
   @State private var colorHex = DrawingPalette.defaultHex
   @State private var widthByTool: [DrawingTool: Double] = Dictionary(
@@ -95,61 +216,68 @@ struct AvatarSetupView: View {
   )
 
   var body: some View {
-    VStack(spacing: 12) {
+    VStack(spacing: Theme.Spacing.s3) {
       Text(title)
-        .font(Theme.Fonts.largeTitle)
-        .foregroundStyle(Theme.ink)
-        .padding(.top, 20)
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
+        .padding(.top, Theme.Spacing.s5)
+        .frame(maxWidth: .infinity)
+        .gridBand()
 
       Text(subtitle)
-        .font(Theme.Fonts.title3)
+        .themeText(.label)
         .multilineTextAlignment(.center)
-        .foregroundStyle(Theme.ink.opacity(0.7))
-        .padding(.horizontal, 28)
+        .foregroundStyle(Theme.Text.secondary)
+        .padding(.horizontal, Theme.Spacing.s7)
 
       DrawingCanvas(
         drawing: $drawing,
         tool: tool,
         colorHex: colorHex,
-        lineWidth: widthByTool[tool] ?? tool.defaultWidth
+        lineWidth: widthByTool[tool] ?? tool.defaultWidth,
+        onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
       .aspectRatio(1, contentMode: .fit)
+      .background { PaperFill(style: .crosses) }
       .clipShape(Circle())
-      .overlay(Circle().stroke(Theme.ink.opacity(0.12), lineWidth: 2))
-      .padding(.horizontal, 36)
-      .padding(.vertical, 4)
+      .overlay(Circle().stroke(Theme.Stroke.subtle, lineWidth: Theme.Borders.thick))
+      .pageHorizontalPadding()
+      .gridBand()
 
-      DrawingToolbar(tool: $tool, colorHex: $colorHex, widthByTool: $widthByTool)
-        .padding(.horizontal, 20)
+      DrawingToolbar(
+        tool: $tool,
+        colorHex: $colorHex,
+        widthByTool: $widthByTool,
+        canUndo: undoStack.canUndo,
+        onUndo: { undoStack.undo(drawing: &drawing) }
+      )
+      .padding(.horizontal, Theme.Spacing.s5)
 
       HStack {
         if let onCancel {
-          Button("Cancel", action: onCancel)
+          Button(DoodleLabel.bracketed("Cancel"), action: onCancel)
+            .doodleButton(.tertiary)
         }
-        Button("Clear") { drawing = .empty }
+        Button(DoodleLabel.bracketed("Clear")) {
+          undoStack.registerClear(before: drawing)
+          drawing = .empty
+        }
+        .doodleButton(.tertiary)
+        .disabled(drawing.isEmpty)
         Spacer()
-        Button(saveLabel) { onSave(drawing) }
-          .buttonStyle(PrimaryButtonStyle(color: Theme.coral))
-          .frame(width: 150)
+        Button(DoodleLabel.bracketed(saveLabel)) { onSave(drawing) }
+          .doodleButton(.primary)
+          .frame(width: 160)
           .disabled(drawing.isEmpty)
       }
-      .padding(.horizontal, 28)
-      .padding(.bottom, 16)
+      .pageHorizontalPadding()
+      .gridBand()
+      .padding(.bottom, Theme.Spacing.s4)
     }
-    .onAppear { drawing = initialDrawing }
-  }
-}
-
-struct PrimaryButtonStyle: ButtonStyle {
-  var color: Color
-
-  func makeBody(configuration: Configuration) -> some View {
-    configuration.label
-      .font(Theme.Fonts.headline)
-      .foregroundStyle(.white)
-      .frame(maxWidth: .infinity)
-      .padding(.vertical, 14)
-      .background(color.opacity(configuration.isPressed ? 0.8 : 1))
-      .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    .pageMargins()
+    .onAppear {
+      drawing = initialDrawing
+      undoStack.reset()
+    }
   }
 }

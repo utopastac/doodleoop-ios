@@ -20,7 +20,9 @@
 	<string>1</string>
 	<key>UIAppFonts</key>
 	<array>
-		<string>PermanentMarker-Regular.ttf</string>
+		<string>Fraunces_72pt-Bold.ttf</string>
+		<string>SpaceMono-Regular.ttf</string>
+		<string>SpaceMono-Bold.ttf</string>
 	</array>
 	<key>UILaunchScreen</key>
 	<dict/>

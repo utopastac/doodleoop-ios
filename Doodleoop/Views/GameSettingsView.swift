@@ -11,13 +11,15 @@ struct GameSettingsView: View {
   var body: some View {
     Form {
       Section {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
           HStack {
             Text("Drawing time")
+              .themeText(.label)
+              .foregroundStyle(Theme.Text.primary)
             Spacer()
             Text("\(Int(drawSeconds))s")
-              .font(Theme.Fonts.body)
-              .foregroundStyle(Theme.coral)
+              .themeText(.bodyStrong)
+              .foregroundStyle(Theme.Accent.default)
           }
           if session.isHost {
             Slider(
@@ -25,17 +27,19 @@ struct GameSettingsView: View {
               in: Double(GameTimerDefaults.minSeconds)...Double(GameTimerDefaults.maxSeconds),
               step: 5
             )
-            .tint(Theme.coral)
+            .tint(Theme.Accent.default)
           }
         }
 
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
           HStack {
             Text("Guessing time")
+              .themeText(.label)
+              .foregroundStyle(Theme.Text.primary)
             Spacer()
             Text("\(Int(guessSeconds))s")
-              .font(Theme.Fonts.body)
-              .foregroundStyle(Theme.teal)
+              .themeText(.bodyStrong)
+              .foregroundStyle(Theme.Accent.hover)
           }
           if session.isHost {
             Slider(
@@ -43,23 +47,26 @@ struct GameSettingsView: View {
               in: Double(GameTimerDefaults.minSeconds)...Double(GameTimerDefaults.maxSeconds),
               step: 5
             )
-            .tint(Theme.teal)
+            .tint(Theme.Accent.hover)
           }
         }
       } header: {
         Text("Turn timers")
+          .themeText(.overline)
       } footer: {
         Text(
           session.isHost
             ? "Defaults are 60s to draw and 30s to guess. Changes apply to the next turns in this lobby."
             : "Only the host can change these."
         )
+        .themeText(.caption)
       }
     }
     .navigationTitle("Game settings")
     .navigationBarTitleDisplayMode(.inline)
     .scrollContentBackground(.hidden)
-    .background(Theme.paper.ignoresSafeArea())
+    .paperBackground(.plain)
+    .pageMargins()
     .onAppear {
       drawSeconds = Double(state.drawTimeLimitSeconds)
       guessSeconds = Double(state.guessTimeLimitSeconds)
@@ -98,8 +105,8 @@ struct PhaseCountdown: View {
     TimelineView(.periodic(from: .now, by: 0.25)) { context in
       let remaining = Self.remainingSeconds(until: endsAt, now: context.date)
       Text(Self.format(remaining))
-        .font(Theme.Fonts.title3)
-        .foregroundStyle(remaining <= 5 ? Theme.coral : Theme.ink.opacity(0.85))
+        .themeText(.subheading)
+        .foregroundStyle(remaining <= 5 ? Theme.Accent.default : Theme.Text.secondary)
         .accessibilityLabel("\(remaining) seconds remaining")
     }
   }

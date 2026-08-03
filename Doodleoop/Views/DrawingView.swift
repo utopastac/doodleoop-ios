@@ -159,7 +159,7 @@ enum StrokeRenderer {
       ))
     }
 
-    let spacing: CGFloat = live ? 3.4 : 2.0
+    let spacing: CGFloat = live ? 2.8 : 1.4
     let sampled = resampledStroke(
       points: points,
       widths: widths,
@@ -206,33 +206,31 @@ enum StrokeRenderer {
     for point in left.dropFirst() {
       path.addLine(to: point)
     }
-
-    let end = pts[pts.count - 1]
-    let endRadius = max(0.35, wds[wds.count - 1] / 2)
-    let endAngle = atan2(left[left.count - 1].y - end.y, left[left.count - 1].x - end.x)
-    path.addArc(
-      center: end,
-      radius: endRadius,
-      startAngle: .radians(endAngle),
-      endAngle: .radians(endAngle + .pi),
-      clockwise: false
-    )
-
-    for point in right.reversed() {
+    // Flat join at the tip; round caps are separate ellipses (arcs often wind inward and notch).
+    path.addLine(to: right[right.count - 1])
+    for point in right.dropLast().reversed() {
       path.addLine(to: point)
     }
+    path.closeSubpath()
 
     let start = pts[0]
     let startRadius = max(0.35, wds[0] / 2)
-    let startAngle = atan2(right[0].y - start.y, right[0].x - start.x)
-    path.addArc(
-      center: start,
-      radius: startRadius,
-      startAngle: .radians(startAngle),
-      endAngle: .radians(startAngle + .pi),
-      clockwise: false
-    )
-    path.closeSubpath()
+    path.addEllipse(in: CGRect(
+      x: start.x - startRadius,
+      y: start.y - startRadius,
+      width: startRadius * 2,
+      height: startRadius * 2
+    ))
+
+    let end = pts[pts.count - 1]
+    let endRadius = max(0.35, wds[wds.count - 1] / 2)
+    path.addEllipse(in: CGRect(
+      x: end.x - endRadius,
+      y: end.y - endRadius,
+      width: endRadius * 2,
+      height: endRadius * 2
+    ))
+
     return path
   }
 
@@ -318,11 +316,58 @@ enum StrokeRenderer {
   }
 }
 
+/// Up to 10 reversible actions (stroke commits + clear).
+struct DrawingUndoStack {
+  private enum Step: Equatable {
+    case removeLastStroke
+    case restore(Drawing)
+  }
+
+  private var steps: [Step] = []
+  private let limit = 10
+
+  var canUndo: Bool { !steps.isEmpty }
+
+  mutating func registerStrokeAdded() {
+    steps.append(.removeLastStroke)
+    trim()
+  }
+
+  mutating func registerClear(before drawing: Drawing) {
+    guard !drawing.isEmpty else { return }
+    steps.append(.restore(drawing))
+    trim()
+  }
+
+  mutating func undo(drawing: inout Drawing) {
+    guard let step = steps.popLast() else { return }
+    switch step {
+    case .removeLastStroke:
+      if !drawing.strokes.isEmpty {
+        drawing.strokes.removeLast()
+      }
+    case .restore(let previous):
+      drawing = previous
+    }
+  }
+
+  mutating func reset() {
+    steps.removeAll()
+  }
+
+  private mutating func trim() {
+    if steps.count > limit {
+      steps.removeFirst(steps.count - limit)
+    }
+  }
+}
+
 struct DrawingCanvas: View {
   @Binding var drawing: Drawing
   var tool: DrawingTool
   var colorHex: String
   var lineWidth: Double
+  var onWillCommitStroke: (() -> Void)?
 
   @Environment(\.displayScale) private var displayScale
 
@@ -336,7 +381,7 @@ struct DrawingCanvas: View {
 
   var body: some View {
     ZStack {
-      Color.white
+      Theme.Background.primary
 
       if let bakedImage {
         Image(uiImage: bakedImage)
@@ -352,7 +397,7 @@ struct DrawingCanvas: View {
         }
       }
     }
-    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
     .background {
       GeometryReader { geo in
         Color.clear
@@ -364,114 +409,100 @@ struct DrawingCanvas: View {
       reconcileBake(with: newDrawing)
     }
     .overlay {
-      GeometryReader { geo in
-        Color.clear.contentShape(Rectangle())
-          .gesture(
-            DragGesture(minimumDistance: 0)
-              .onChanged { value in
-                let canvasWidth = max(geo.size.width, 1)
-                let canvasHeight = max(geo.size.height, 1)
-                let location = value.location
-                let now = ProcessInfo.processInfo.systemUptime
-
-                let pointWidth = penPointWidth(
-                  at: location,
-                  now: now,
-                  canvasWidth: canvasWidth,
-                  canvasHeight: canvasHeight
-                )
-
-                let point = DrawPoint(
-                  x: location.x / canvasWidth,
-                  y: location.y / canvasHeight,
-                  lineWidth: pointWidth
-                )
-
-                if currentStroke == nil {
-                  currentStroke = Stroke(
-                    points: [point],
-                    lineWidth: lineWidth,
-                    tool: tool,
-                    colorHex: colorHex
-                  )
-                  lastSampleTime = now
-                  lastSampleLocation = location
-                  smoothedPenWidth = pointWidth
-                  return
-                }
-
-                lastSampleTime = now
-                lastSampleLocation = location
-
-                guard let last = currentStroke?.points.last else { return }
-                let dx = (point.x - last.x) * canvasWidth
-                let dy = (point.y - last.y) * canvasHeight
-                let distance = hypot(dx, dy)
-                let minSpacing: CGFloat = 1.2
-
-                if distance < minSpacing {
-                  if tool == .pen, var stroke = currentStroke, !stroke.points.isEmpty {
-                    stroke.points[stroke.points.count - 1].lineWidth = pointWidth
-                    currentStroke = stroke
-                  }
-                  return
-                }
-
-                if distance > 12, var stroke = currentStroke {
-                  let steps = min(5, Int(distance / 6))
-                  for step in 1..<steps {
-                    let t = Double(step) / Double(steps)
-                    let midWidth: Double? = {
-                      guard let from = last.lineWidth, let to = pointWidth else {
-                        return pointWidth ?? last.lineWidth
-                      }
-                      return from + (to - from) * t
-                    }()
-                    stroke.points.append(
-                      DrawPoint(
-                        x: last.x + (point.x - last.x) * t,
-                        y: last.y + (point.y - last.y) * t,
-                        lineWidth: midWidth
-                      )
-                    )
-                  }
-                  stroke.points.append(point)
-                  currentStroke = stroke
-                } else {
-                  currentStroke?.points.append(point)
-                }
-              }
-              .onEnded { value in
-                if var stroke = currentStroke {
-                  let canvasWidth = max(geo.size.width, 1)
-                  let canvasHeight = max(geo.size.height, 1)
-                  let endWidth: Double? = {
-                    guard tool == .pen else { return nil }
-                    let tip = (smoothedPenWidth ?? lineWidth) * 0.55
-                    return max(0.6, tip)
-                  }()
-                  let end = DrawPoint(
-                    x: value.location.x / canvasWidth,
-                    y: value.location.y / canvasHeight,
-                    lineWidth: endWidth
-                  )
-                  if let last = stroke.points.last,
-                     abs(last.x - end.x) < 0.0005,
-                     abs(last.y - end.y) < 0.0005 {
-                    stroke.points[stroke.points.count - 1].lineWidth = endWidth ?? last.lineWidth
-                  } else {
-                    stroke.points.append(end)
-                  }
-                  drawing.strokes.append(stroke)
-                }
-                currentStroke = nil
-                lastSampleTime = nil
-                lastSampleLocation = nil
-                smoothedPenWidth = nil
-              }
-          )
-      }
+      // UIKit coalesced touches keep fast strokes dense; SwiftUI DragGesture cannot.
+      StrokeTouchCapture(
+        onSamples: { samples, size in
+          for sample in samples {
+            appendSample(sample.location, timestamp: sample.timestamp, in: size)
+          }
+        },
+        onEnded: { location, size in
+          finishStroke(at: location, in: size)
+        }
+      )
     }
+  }
+
+  private func appendSample(_ location: CGPoint, timestamp: TimeInterval, in size: CGSize) {
+    let canvasWidth = max(size.width, 1)
+    let canvasHeight = max(size.height, 1)
+
+    let pointWidth = penPointWidth(
+      at: location,
+      now: timestamp,
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight
+    )
+
+    let point = DrawPoint(
+      x: location.x / canvasWidth,
+      y: location.y / canvasHeight,
+      lineWidth: pointWidth
+    )
+
+    if currentStroke == nil {
+      currentStroke = Stroke(
+        points: [point],
+        lineWidth: lineWidth,
+        tool: tool,
+        colorHex: colorHex
+      )
+      lastSampleTime = timestamp
+      lastSampleLocation = location
+      smoothedPenWidth = pointWidth
+      return
+    }
+
+    guard let last = currentStroke?.points.last else { return }
+    let dx = (point.x - last.x) * canvasWidth
+    let dy = (point.y - last.y) * canvasHeight
+    let distance = hypot(dx, dy)
+    // Keep real samples only — never invent chord midpoints (those force polygons).
+    let minSpacing: CGFloat = 0.7
+
+    if distance < minSpacing {
+      if tool == .pen, var stroke = currentStroke, !stroke.points.isEmpty {
+        stroke.points[stroke.points.count - 1].lineWidth = pointWidth
+        currentStroke = stroke
+      }
+      lastSampleTime = timestamp
+      lastSampleLocation = location
+      return
+    }
+
+    currentStroke?.points.append(point)
+    lastSampleTime = timestamp
+    lastSampleLocation = location
+  }
+
+  private func finishStroke(at location: CGPoint, in size: CGSize) {
+    if var stroke = currentStroke {
+      let canvasWidth = max(size.width, 1)
+      let canvasHeight = max(size.height, 1)
+      let endWidth: Double? = {
+        guard tool == .pen else { return nil }
+        let tip = (smoothedPenWidth ?? lineWidth) * 0.55
+        return max(0.6, tip)
+      }()
+      let end = DrawPoint(
+        x: location.x / canvasWidth,
+        y: location.y / canvasHeight,
+        lineWidth: endWidth
+      )
+      if let last = stroke.points.last,
+         abs(last.x - end.x) < 0.0005,
+         abs(last.y - end.y) < 0.0005 {
+        stroke.points[stroke.points.count - 1].lineWidth = endWidth ?? last.lineWidth
+      } else {
+        stroke.points.append(end)
+      }
+      onWillCommitStroke?()
+      drawing.strokes.append(stroke)
+    }
+    currentStroke = nil
+    lastSampleTime = nil
+    lastSampleLocation = nil
+    smoothedPenWidth = nil
   }
 
   private func updateCanvasSize(_ size: CGSize) {
@@ -509,7 +540,7 @@ struct DrawingCanvas: View {
       return base * 1.15
     }
 
-    let dt = max(now - lastTime, 1.0 / 120.0)
+    let dt = max(now - lastTime, 1.0 / 240.0)
     let dx = location.x - lastLocation.x
     let dy = location.y - lastLocation.y
     let scale = 390 / max(min(canvasWidth, canvasHeight), 1)
@@ -522,36 +553,111 @@ struct DrawingCanvas: View {
   }
 }
 
+/// High-frequency finger samples via UIKit coalesced touches.
+private struct StrokeTouchCapture: UIViewRepresentable {
+  struct Sample {
+    var location: CGPoint
+    var timestamp: TimeInterval
+  }
+
+  var onSamples: ([Sample], CGSize) -> Void
+  var onEnded: (CGPoint, CGSize) -> Void
+
+  func makeUIView(context: Context) -> TouchView {
+    let view = TouchView()
+    view.isMultipleTouchEnabled = false
+    view.backgroundColor = .clear
+    view.isOpaque = false
+    view.onSamples = onSamples
+    view.onEnded = onEnded
+    return view
+  }
+
+  func updateUIView(_ uiView: TouchView, context: Context) {
+    uiView.onSamples = onSamples
+    uiView.onEnded = onEnded
+  }
+
+  final class TouchView: UIView {
+    var onSamples: (([Sample], CGSize) -> Void)?
+    var onEnded: ((CGPoint, CGSize) -> Void)?
+
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+      emit(touches, event: event)
+    }
+
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+      emit(touches, event: event)
+    }
+
+    override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
+      emit(touches, event: event)
+      if let touch = touches.first {
+        onEnded?(touch.location(in: self), bounds.size)
+      }
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+      touchesEnded(touches, with: event)
+    }
+
+    private func emit(_ touches: Set<UITouch>, event: UIEvent?) {
+      guard let touch = touches.first else { return }
+      let coalesced = event?.coalescedTouches(for: touch) ?? [touch]
+      let samples = coalesced.map {
+        Sample(location: $0.location(in: self), timestamp: $0.timestamp)
+      }
+      onSamples?(samples, bounds.size)
+    }
+  }
+}
+
 struct DrawingToolbar: View {
   @Binding var tool: DrawingTool
   @Binding var colorHex: String
   @Binding var widthByTool: [DrawingTool: Double]
+  var canUndo: Bool = false
+  var onUndo: (() -> Void)?
 
   private var selectedWidth: Double {
     widthByTool[tool] ?? tool.defaultWidth
   }
 
   var body: some View {
-    VStack(spacing: 12) {
-      HStack(spacing: 10) {
+    VStack(spacing: Theme.Spacing.s3) {
+      HStack(spacing: Theme.Spacing.s2 + 2) {
         ForEach(DrawingTool.allCases, id: \.self) { option in
           Button {
             tool = option
           } label: {
             Image(systemName: option.systemImage)
-              .font(.system(size: 18, weight: .semibold))
-              .foregroundStyle(tool == option ? .white : Theme.ink.opacity(0.75))
-              .frame(width: 44, height: 44)
-              .background(tool == option ? Theme.ink : Theme.ink.opacity(0.08))
-              .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+              .font(.system(size: Theme.Sizing.iconMd, weight: .semibold))
+              .foregroundStyle(tool == option ? Theme.Background.primary : Theme.Text.secondary)
+              .frame(width: Theme.Sizing.touchTarget, height: Theme.Sizing.touchTarget)
+              .background(tool == option ? Theme.Text.primary : Theme.Background.tertiary)
+              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
           }
           .buttonStyle(.plain)
           .accessibilityLabel(option.displayName)
         }
 
-        Spacer(minLength: 8)
+        Button {
+          onUndo?()
+        } label: {
+          Image(systemName: "arrow.uturn.backward")
+            .font(.system(size: Theme.Sizing.iconMd, weight: .semibold))
+            .foregroundStyle(canUndo ? Theme.Text.secondary : Theme.Text.placeholder)
+            .frame(width: Theme.Sizing.touchTarget, height: Theme.Sizing.touchTarget)
+            .background(canUndo ? Theme.Background.tertiary : Theme.Background.secondary)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(!canUndo)
+        .accessibilityLabel("Undo")
 
-        HStack(spacing: 8) {
+        Spacer(minLength: Theme.Spacing.s2)
+
+        HStack(spacing: Theme.Spacing.s2) {
           ForEach(tool.availableWidths, id: \.self) { width in
             Button {
               widthByTool[tool] = width
@@ -559,10 +665,10 @@ struct DrawingToolbar: View {
               ZStack {
                 Circle()
                   .strokeBorder(
-                    selectedWidth == width ? Theme.ink : Theme.ink.opacity(0.2),
-                    lineWidth: selectedWidth == width ? 2 : 1
+                    selectedWidth == width ? Theme.Stroke.emphasis : Theme.Stroke.subtle,
+                    lineWidth: selectedWidth == width ? Theme.Borders.thick : Theme.Borders.thin
                   )
-                  .frame(width: 36, height: 36)
+                  .frame(width: Theme.Sizing.buttonHeight, height: Theme.Sizing.buttonHeight)
                 Capsule()
                   .fill(Color(drawingHex: colorHex).opacity(tool.opacity))
                   .frame(
@@ -588,7 +694,7 @@ struct DrawingToolbar: View {
               .overlay {
                 if colorHex == hex {
                   Circle()
-                    .strokeBorder(Theme.ink, lineWidth: 2.5)
+                    .strokeBorder(Theme.Stroke.emphasis, lineWidth: Theme.Borders.heavy)
                     .padding(2)
                 }
               }
@@ -598,10 +704,10 @@ struct DrawingToolbar: View {
           .accessibilityLabel("Color \(hex)")
         }
       }
-      .padding(.horizontal, 4)
-      .padding(.vertical, 6)
-      .background(Theme.ink.opacity(0.05))
-      .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+      .padding(.horizontal, Theme.Spacing.s1)
+      .padding(.vertical, Theme.Spacing.s1 + 2)
+      .background(Theme.Background.secondary)
+      .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
     }
   }
 }
@@ -609,6 +715,7 @@ struct DrawingToolbar: View {
 struct DrawingView: View {
   @EnvironmentObject private var session: GameSession
   @State private var drawing = Drawing.empty
+  @State private var undoStack = DrawingUndoStack()
   @State private var tool: DrawingTool = .pen
   @State private var colorHex = DrawingPalette.defaultHex
   @State private var widthByTool: [DrawingTool: Double] = Dictionary(
@@ -631,48 +738,64 @@ struct DrawingView: View {
       }
     }()
 
-    VStack(spacing: 12) {
+    VStack(spacing: Theme.Spacing.s3) {
       HStack(alignment: .firstTextBaseline) {
         Text("Draw")
-          .font(Theme.Fonts.largeTitle)
+          .themeText(.heading)
+          .foregroundStyle(Theme.Text.primary)
         Spacer()
         PhaseCountdown(endsAt: state?.phaseEndsAt)
       }
-      .padding(.horizontal, 20)
+      .pageHorizontalPadding()
 
       Text(prompt)
-        .font(Theme.Fonts.title2)
+        .themeText(.subheading)
         .multilineTextAlignment(.center)
-        .foregroundStyle(Theme.teal)
+        .foregroundStyle(Theme.Accent.default)
 
       DrawingCanvas(
         drawing: $drawing,
         tool: tool,
         colorHex: colorHex,
-        lineWidth: widthByTool[tool] ?? tool.defaultWidth
+        lineWidth: widthByTool[tool] ?? tool.defaultWidth,
+        onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .padding(.horizontal, 16)
+      .padding(.horizontal, Theme.Spacing.s4)
 
-      DrawingToolbar(tool: $tool, colorHex: $colorHex, widthByTool: $widthByTool)
-        .padding(.horizontal, 16)
+      DrawingToolbar(
+        tool: $tool,
+        colorHex: $colorHex,
+        widthByTool: $widthByTool,
+        canUndo: undoStack.canUndo,
+        onUndo: { undoStack.undo(drawing: &drawing) }
+      )
+      .padding(.horizontal, Theme.Spacing.s4)
 
       HStack {
-        Button("Clear") { drawing = .empty }
-        Spacer()
-        Button("Done") {
-          session.submitDrawing(drawing)
+        Button("Clear") {
+          undoStack.registerClear(before: drawing)
           drawing = .empty
         }
-        .buttonStyle(PrimaryButtonStyle(color: Theme.coral))
+        .themeText(.label)
+        .foregroundStyle(Theme.Text.secondary)
+        .disabled(drawing.isEmpty)
+        Spacer()
+        Button(DoodleLabel.bracketed("Done")) {
+          session.submitDrawing(drawing)
+          drawing = .empty
+          undoStack.reset()
+        }
+        .doodleButton(.primary)
         .frame(width: 140)
         .disabled(drawing.isEmpty || (state?.submittedPlayerIds.contains(session.localPlayerId) ?? false))
       }
-      .padding(.horizontal, 20)
-      .padding(.bottom, 12)
+      .pageHorizontalPadding()
+      .padding(.bottom, Theme.Spacing.s3)
     }
-    .padding(.top, 16)
-    .background(Theme.paper.ignoresSafeArea())
+    .padding(.top, Theme.Spacing.s4)
+    .paperBackground(.plain)
+    .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
     }
@@ -692,5 +815,6 @@ struct DrawingView: View {
           !drawing.isEmpty else { return }
     session.submitDrawing(drawing)
     drawing = .empty
+    undoStack.reset()
   }
 }

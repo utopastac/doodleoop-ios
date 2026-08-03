@@ -2,7 +2,7 @@ name: Doodleoop
 options:
   bundleIdPrefix: co.utopastac
   deploymentTarget:
-    iOS: "18.0"
+    iOS: "17.0"
   createIntermediateGroups: true
 settings:
   BASE_SDK: iphoneos
@@ -12,9 +12,26 @@ targets:
     type: application
     platform: iOS
     sources:
-      - Doodleoop
+      - path: Doodleoop
+        excludes:
+          - "Fraunces/**"
+          - "Space_Mono/**"
+          - "Permanent_Marker/**"
     info:
       path: Doodleoop/Info.plist
+      properties:
+        UILaunchScreen: {}
+        UIAppFonts:
+          - Fraunces_72pt-Bold.ttf
+          - SpaceMono-Regular.ttf
+          - SpaceMono-Bold.ttf
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: co.utopastac.doodleoop
       PRODUCT_NAME: Doodleoop

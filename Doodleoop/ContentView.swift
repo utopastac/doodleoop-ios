@@ -6,21 +6,11 @@ struct ContentView: View {
   var body: some View {
     ZStack {
       Group {
-        if let state = session.state {
-          switch state.phase {
-          case .lobby:
-            LobbyView()
-          case .drawing:
-            DrawingView()
-          case .guessing:
-            GuessingView()
-          case .reveal:
-            RevealView()
-          case .roundOver:
-            RoundOverView()
-          }
-        } else {
+        switch session.role {
+        case .idle:
           HomeView()
+        case .host, .joiner:
+          gameFlow
         }
       }
 
@@ -28,7 +18,29 @@ struct ContentView: View {
         HandoffOverlay()
       }
     }
-    .environment(\.font, Theme.Fonts.body)
+    .environment(\.font, Theme.TextStyle.label.font)
+  }
+
+  @ViewBuilder
+  private var gameFlow: some View {
+    if let state = session.state {
+      switch state.phase {
+      case .lobby:
+        LobbyView()
+      case .drawing:
+        DrawingView()
+      case .guessing:
+        GuessingView()
+      case .reveal:
+        RevealView()
+      case .roundOver:
+        RoundOverView()
+      }
+    } else if session.role == .joiner {
+      LobbyView()
+    } else {
+      HomeView()
+    }
   }
 }
 

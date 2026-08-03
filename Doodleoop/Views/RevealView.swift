@@ -8,25 +8,28 @@ struct RevealView: View {
     let pad = state.flatMap { $0.pads.indices.contains($0.revealPadIndex) ? $0.pads[$0.revealPadIndex] : nil }
     let starter = pad.flatMap { state?.player(id: $0.id) }
 
-    VStack(spacing: 16) {
+    VStack(spacing: Theme.Spacing.s4) {
       Text("Reveal")
-        .font(Theme.Fonts.largeTitle)
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
       if let starter {
         Text("Started by \(starter.name)")
-          .foregroundStyle(.secondary)
+          .themeText(.label)
+          .foregroundStyle(Theme.Text.secondary)
       }
 
       ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
           if let pad {
             ForEach(Array(pad.steps.enumerated()), id: \.offset) { _, step in
               switch step {
               case .prompt(let text):
                 labeled("Category", text)
               case .drawing(let playerId, let drawing):
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
                   Text(state?.player(id: playerId)?.name ?? "Player")
-                    .font(Theme.Fonts.headline)
+                    .themeText(.bodyStrong)
+                    .foregroundStyle(Theme.Text.primary)
                   ReadOnlyDrawingView(drawing: drawing)
                     .frame(height: 220)
                 }
@@ -36,33 +39,36 @@ struct RevealView: View {
             }
           }
         }
-        .padding(.horizontal, 20)
+        .pageHorizontalPadding()
       }
 
       if session.isHost {
-        Button(state.map { $0.revealPadIndex + 1 >= $0.pads.count } == true ? "Finish" : "Next pad") {
+        Button(DoodleLabel.bracketed(state.map { $0.revealPadIndex + 1 >= $0.pads.count } == true ? "Finish" : "Next pad")) {
           session.advanceReveal()
         }
-        .buttonStyle(PrimaryButtonStyle(color: Theme.coral))
-        .padding(.horizontal, 20)
-        .padding(.bottom, 12)
+        .doodleButton(.primary)
+        .pageHorizontalPadding()
+        .padding(.bottom, Theme.Spacing.s3)
       } else {
         Text("Host is revealing…")
-          .foregroundStyle(.secondary)
-          .padding(.bottom, 12)
+          .themeText(.label)
+          .foregroundStyle(Theme.Text.secondary)
+          .padding(.bottom, Theme.Spacing.s3)
       }
     }
-    .padding(.top, 20)
-    .background(Theme.paper.ignoresSafeArea())
+    .padding(.top, Theme.Spacing.s5)
+    .paperBackground(.plain)
+    .pageMargins()
   }
 
   private func labeled(_ title: String, _ body: String) -> some View {
-    VStack(alignment: .leading, spacing: 4) {
+    VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
       Text(title)
-        .font(Theme.Fonts.caption)
-        .foregroundStyle(Theme.teal)
+        .themeText(.caption)
+        .foregroundStyle(Theme.Accent.default)
       Text(body)
-        .font(Theme.Fonts.title3)
+        .themeText(.subheading)
+        .foregroundStyle(Theme.Text.primary)
     }
   }
 }
@@ -71,23 +77,26 @@ struct RoundOverView: View {
   @EnvironmentObject private var session: GameSession
 
   var body: some View {
-    VStack(spacing: 24) {
+    VStack(spacing: Theme.Spacing.s6) {
       Spacer()
       Text("Loop complete")
-        .font(Theme.Fonts.largeTitle)
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
       Text("Ready for another category?")
-        .foregroundStyle(.secondary)
+        .themeText(.label)
+        .foregroundStyle(Theme.Text.secondary)
       if session.isHost {
-        Button("Back to lobby") {
+        Button(DoodleLabel.bracketed("Back to lobby")) {
           session.returnToLobby()
         }
-        .buttonStyle(PrimaryButtonStyle(color: Theme.coral))
-        .padding(.horizontal, 40)
+        .doodleButton(.primary)
+        .pageHorizontalPadding()
       }
       Spacer()
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Theme.paper.ignoresSafeArea())
+    .paperBackground(.plain)
+    .pageMargins()
   }
 }
 
@@ -98,24 +107,25 @@ struct HandoffOverlay: View {
     if let handoff = session.handoff,
        let player = session.state?.player(id: handoff.playerId) {
       ZStack {
-        Theme.ink.opacity(0.94).ignoresSafeArea()
-        VStack(spacing: 20) {
+        Theme.Ink.deep.opacity(0.94).ignoresSafeArea()
+        VStack(spacing: Theme.Spacing.s5) {
           Text(handoff.title)
-            .font(Theme.Fonts.largeTitle)
-            .foregroundStyle(.white)
+            .themeText(.heading)
+            .foregroundStyle(Theme.Background.primary)
           Text(handoff.message)
+            .themeText(.label)
             .multilineTextAlignment(.center)
-            .foregroundStyle(.white.opacity(0.85))
-            .padding(.horizontal, 28)
+            .foregroundStyle(Theme.Background.primary.opacity(0.85))
+            .padding(.horizontal, Theme.Spacing.s7)
           AvatarBadge(drawing: player.avatar, size: 120)
           Text(player.name)
-            .font(Theme.Fonts.permanentMarker(size: 40))
-            .foregroundStyle(Theme.mustard)
-          Button("I'm \(player.name)") {
+            .themeText(.display)
+            .foregroundStyle(Theme.Accent.muted)
+          Button(DoodleLabel.bracketed("I'm \(player.name)")) {
             session.confirmHandoff()
           }
-          .buttonStyle(PrimaryButtonStyle(color: Theme.coral))
-          .padding(.horizontal, 40)
+          .doodleButton(.primary)
+          .pageHorizontalPadding()
         }
       }
     }

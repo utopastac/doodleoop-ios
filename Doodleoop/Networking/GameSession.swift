@@ -242,6 +242,109 @@ final class GameSession: ObservableObject {
     localPlayerId = playerId
   }
 
+  // MARK: - View previews
+
+  func loadPreview(_ preview: ViewPreview) {
+    leaveGame()
+    handoff = nil
+    discoveredPeers = []
+
+    switch preview {
+    case .avatarSetup, .paperStyles:
+      return
+    case .lobbyPassAndPlay:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = previewLobby(playerCount: 4, sharedDevice: true)
+      draftCategory = "Breakfast foods"
+    case .lobbyNearbyHost:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = previewLobby(playerCount: 5, sharedDevice: false)
+      draftCategory = "Things with wings"
+    case .lobbyNearbyJoiner:
+      role = .joiner
+      localPlayerId = devicePlayerId
+      state = nil
+    case .lobbyNearbyGameFound:
+      role = .joiner
+      localPlayerId = devicePlayerId
+      state = nil
+      discoveredPeers = [PreviewStateFactory.discoveredDemoPeer()]
+    case .drawing:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = PreviewStateFactory.drawingState(
+        devicePlayerId: devicePlayerId,
+        displayName: localDisplayName,
+        avatar: localAvatar
+      )
+    case .drawingFromGuess:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = PreviewStateFactory.drawingFromGuessState(
+        devicePlayerId: devicePlayerId,
+        displayName: localDisplayName,
+        avatar: localAvatar
+      )
+    case .guessing:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = PreviewStateFactory.guessingState(
+        devicePlayerId: devicePlayerId,
+        displayName: localDisplayName,
+        avatar: localAvatar
+      )
+    case .reveal:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = PreviewStateFactory.revealState(
+        devicePlayerId: devicePlayerId,
+        displayName: localDisplayName,
+        avatar: localAvatar
+      )
+    case .roundOver:
+      role = .host
+      localPlayerId = devicePlayerId
+      state = PreviewStateFactory.roundOverState(
+        devicePlayerId: devicePlayerId,
+        displayName: localDisplayName,
+        avatar: localAvatar
+      )
+    case .handoffOverlay:
+      role = .host
+      localPlayerId = devicePlayerId
+      let players = PreviewStateFactory.makePlayers(
+        count: 3,
+        sharedDevice: true,
+        devicePlayerId: devicePlayerId,
+        displayName: localDisplayName,
+        avatar: localAvatar
+      )
+      var next = PreviewStateFactory.makeLobby(players: players)
+      next = GameEngine.startRound(category: "Breakfast foods", in: next)
+      state = next
+      if let nextPlayer = players.dropFirst().first {
+        localPlayerId = nextPlayer.id
+        handoff = SeatHandoff(
+          playerId: nextPlayer.id,
+          title: "Pass the phone",
+          message: "Hand the phone to \(nextPlayer.name) so they can draw."
+        )
+      }
+    }
+  }
+
+  private func previewLobby(playerCount: Int, sharedDevice: Bool) -> GameState {
+    PreviewStateFactory.makeLobby(
+      playerCount: playerCount,
+      sharedDevice: sharedDevice,
+      devicePlayerId: devicePlayerId,
+      displayName: localDisplayName,
+      avatar: localAvatar
+    )
+  }
+
   // MARK: - Internals
 
   private func bindPeers(_ transport: MultipeerTransport) {
