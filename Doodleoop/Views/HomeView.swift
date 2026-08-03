@@ -163,39 +163,36 @@ struct HomeAvatarHero<NameContent: View>: View {
   }
 
   var body: some View {
-    ZStack {
-      PaperFill(style: .crosses)
-        .clipShape(Circle())
-
-      VStack(spacing: Theme.Spacing.s5) {
-        Group {
-          if drawing.isEmpty {
-            Image(systemName: "person.fill")
-              .font(.system(size: 64, weight: .regular))
-              .foregroundStyle(Theme.Text.tertiary)
-          } else {
-            Canvas { context, canvasSize in
-              let scale = canvasSize.width / 280
-              StrokeRenderer.drawDrawing(
-                drawing,
-                in: &context,
-                size: canvasSize,
-                widthScale: scale
-              )
-            }
+    VStack(spacing: Theme.Spacing.s5) {
+      Group {
+        if drawing.isEmpty {
+          Image(systemName: "person.fill")
+            .font(.system(size: 64, weight: .regular))
+            .foregroundStyle(Theme.Text.tertiary)
+        } else {
+          Canvas { context, canvasSize in
+            let scale = canvasSize.width / 280
+            StrokeRenderer.drawDrawing(
+              drawing,
+              in: &context,
+              size: canvasSize,
+              widthScale: scale
+            )
           }
         }
-        .frame(maxWidth: 160, maxHeight: 180)
-        .contentShape(Rectangle())
-        .onTapGesture { onDrawingTap?() }
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("Edit avatar")
-
-        nameContent()
-          .frame(maxWidth: 200)
       }
-      .padding(Theme.Spacing.s6)
+      .frame(maxWidth: 160, maxHeight: 180)
+      .contentShape(Rectangle())
+      .onTapGesture { onDrawingTap?() }
+      .accessibilityAddTraits(.isButton)
+      .accessibilityLabel("Edit avatar")
+
+      nameContent()
+        .frame(maxWidth: 200)
     }
+    .padding(Theme.Spacing.s6)
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .paperSurface(.crosses, in: Circle())
   }
 }
 
@@ -238,7 +235,6 @@ struct AvatarSetupView: View {
         onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
       .aspectRatio(1, contentMode: .fit)
-      .background { PaperFill(style: .crosses) }
       .clipShape(Circle())
       .overlay(Circle().stroke(Theme.Stroke.subtle, lineWidth: Theme.Borders.thick))
       .pageHorizontalPadding()

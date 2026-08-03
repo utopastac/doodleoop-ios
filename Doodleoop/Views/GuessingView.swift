@@ -31,7 +31,7 @@ struct GuessingView: View {
       if let drawing {
         ReadOnlyDrawingView(drawing: drawing)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .padding(.horizontal, Theme.Spacing.s4)
+          .pageHorizontalPadding()
       } else {
         Spacer()
         ProgressView("Waiting for drawing…")
@@ -88,8 +88,10 @@ struct ReadOnlyDrawingView: View {
     Canvas { context, size in
       StrokeRenderer.drawDrawing(drawing, in: &context, size: size)
     }
-    .background { PaperFill(style: .crosses) }
-    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+    .paperSurface(
+      .crosses,
+      in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+    )
   }
 }
 
@@ -117,8 +119,7 @@ struct AvatarBadge: View {
             widthScale: scale
           )
         }
-        .background { PaperFill(style: .crosses) }
-        .clipShape(Circle())
+        .paperSurface(.crosses, in: Circle())
       }
     }
     .frame(width: size, height: size)

@@ -248,6 +248,12 @@ extension View {
     modifier(PaperBackgroundModifier(style: style, ignoresSafeArea: ignoresSafeArea))
   }
 
+  /// Paper fill clipped to a shape — drawing sheets, avatar circles, etc.
+  func paperSurface<S: Shape>(_ style: PaperStyle = .crosses, in shape: S) -> some View {
+    background { PaperFill(style: style) }
+      .clipShape(shape)
+  }
+
   /// Always-on left/right grid rails at `Theme.Layout.pageMargin`.
   func pageMargins() -> some View {
     modifier(PageMarginsModifier())

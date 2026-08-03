@@ -144,19 +144,26 @@ enum StrokeRenderer {
     return (outPoints, outWidths)
   }
 
-  /// Single filled ribbon — smooth edges, one draw call (not thousands of stamps).
+  private struct PenRibbon {
+    var body: Path
+    var startCap: CGRect?
+    var endCap: CGRect?
+  }
+
+  /// Filled ribbon body + separate round caps (caps must not share a path — overlap holes out).
   private static func variableWidthRibbon(
     points: [CGPoint],
     widths: [CGFloat],
     live: Bool
-  ) -> Path {
-    guard !points.isEmpty else { return Path() }
+  ) -> PenRibbon {
+    guard !points.isEmpty else { return PenRibbon(body: Path()) }
 
     if points.count == 1 {
       let r = max(0.4, widths[0] / 2)
-      return Path(ellipseIn: CGRect(
+      let rect = CGRect(
         x: points[0].x - r, y: points[0].y - r, width: r * 2, height: r * 2
-      ))
+      )
+      return PenRibbon(body: Path(ellipseIn: rect))
     }
 
     let spacing: CGFloat = live ? 2.8 : 1.4
@@ -168,7 +175,7 @@ enum StrokeRenderer {
     )
     let pts = sampled.points
     let wds = sampled.widths
-    guard pts.count >= 2 else { return Path() }
+    guard pts.count >= 2 else { return PenRibbon(body: Path()) }
 
     var left: [CGPoint] = []
     var right: [CGPoint] = []
@@ -201,37 +208,27 @@ enum StrokeRenderer {
       right.append(CGPoint(x: pts[index].x - nx * radius, y: pts[index].y - ny * radius))
     }
 
-    var path = Path()
-    path.move(to: left[0])
+    var body = Path()
+    body.move(to: left[0])
     for point in left.dropFirst() {
-      path.addLine(to: point)
+      body.addLine(to: point)
     }
-    // Flat join at the tip; round caps are separate ellipses (arcs often wind inward and notch).
-    path.addLine(to: right[right.count - 1])
+    body.addLine(to: right[right.count - 1])
     for point in right.dropLast().reversed() {
-      path.addLine(to: point)
+      body.addLine(to: point)
     }
-    path.closeSubpath()
+    body.closeSubpath()
 
+    let startR = max(0.35, wds[0] / 2)
+    let endR = max(0.35, wds[wds.count - 1] / 2)
     let start = pts[0]
-    let startRadius = max(0.35, wds[0] / 2)
-    path.addEllipse(in: CGRect(
-      x: start.x - startRadius,
-      y: start.y - startRadius,
-      width: startRadius * 2,
-      height: startRadius * 2
-    ))
-
     let end = pts[pts.count - 1]
-    let endRadius = max(0.35, wds[wds.count - 1] / 2)
-    path.addEllipse(in: CGRect(
-      x: end.x - endRadius,
-      y: end.y - endRadius,
-      width: endRadius * 2,
-      height: endRadius * 2
-    ))
 
-    return path
+    return PenRibbon(
+      body: body,
+      startCap: CGRect(x: start.x - startR, y: start.y - startR, width: startR * 2, height: startR * 2),
+      endCap: CGRect(x: end.x - endR, y: end.y - endR, width: endR * 2, height: endR * 2)
+    )
   }
 
   static func draw(
@@ -255,10 +252,15 @@ enum StrokeRenderer {
       let widths: [CGFloat] = stroke.points.map { point in
         CGFloat(max(0.6, (point.lineWidth ?? stroke.lineWidth) * widthScale))
       }
-      context.fill(
-        variableWidthRibbon(points: points, widths: widths, live: live),
-        with: .color(color)
-      )
+      let ribbon = variableWidthRibbon(points: points, widths: widths, live: live)
+      let fillStyle = FillStyle(eoFill: false, antialiased: true)
+      context.fill(ribbon.body, with: .color(color), style: fillStyle)
+      if let startCap = ribbon.startCap {
+        context.fill(Path(ellipseIn: startCap), with: .color(color), style: fillStyle)
+      }
+      if let endCap = ribbon.endCap {
+        context.fill(Path(ellipseIn: endCap), with: .color(color), style: fillStyle)
+      }
 
     case .pencil:
       context.drawLayer { layer in
@@ -297,16 +299,20 @@ enum StrokeRenderer {
     }
   }
 
-  /// Rasterize committed ink once so live drawing doesn’t redraw everything each frame.
+  /// Rasterize paper + committed ink once so live drawing doesn’t redraw everything each frame.
   @MainActor
-  static func bake(_ drawing: Drawing, size: CGSize, scale: CGFloat) -> UIImage? {
+  static func bake(
+    _ drawing: Drawing,
+    size: CGSize,
+    scale: CGFloat,
+    paperStyle: PaperStyle = .crosses
+  ) -> UIImage? {
     guard size.width > 1, size.height > 1 else { return nil }
-    let content = Canvas { context, canvasSize in
-      context.fill(
-        Path(CGRect(origin: .zero, size: canvasSize)),
-        with: .color(.white)
-      )
-      drawDrawing(drawing, in: &context, size: canvasSize)
+    let content = ZStack {
+      PaperFill(style: paperStyle)
+      Canvas { context, canvasSize in
+        drawDrawing(drawing, in: &context, size: canvasSize)
+      }
     }
     .frame(width: size.width, height: size.height)
 
@@ -367,6 +373,8 @@ struct DrawingCanvas: View {
   var tool: DrawingTool
   var colorHex: String
   var lineWidth: Double
+  /// Sheet paper behind the ink (same as the home avatar circle by default).
+  var paperStyle: PaperStyle = .crosses
   var onWillCommitStroke: (() -> Void)?
 
   @Environment(\.displayScale) private var displayScale
@@ -379,10 +387,12 @@ struct DrawingCanvas: View {
   @State private var bakedStrokeCount = 0
   @State private var canvasSize: CGSize = .zero
 
+  private var sheetShape: RoundedRectangle {
+    RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+  }
+
   var body: some View {
     ZStack {
-      Theme.Background.primary
-
       if let bakedImage {
         Image(uiImage: bakedImage)
           .resizable()
@@ -397,7 +407,7 @@ struct DrawingCanvas: View {
         }
       }
     }
-    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+    .paperSurface(paperStyle, in: sheetShape)
     .background {
       GeometryReader { geo in
         Color.clear
@@ -481,8 +491,8 @@ struct DrawingCanvas: View {
       let canvasHeight = max(size.height, 1)
       let endWidth: Double? = {
         guard tool == .pen else { return nil }
-        let tip = (smoothedPenWidth ?? lineWidth) * 0.55
-        return max(0.6, tip)
+        // Keep the live tip width — don't force a thin end blob.
+        return max(0.6, smoothedPenWidth ?? lineWidth)
       }()
       let end = DrawPoint(
         x: location.x / canvasWidth,
@@ -522,7 +532,12 @@ struct DrawingCanvas: View {
       return
     }
     guard drawing.strokes.count != bakedStrokeCount || bakedImage == nil else { return }
-    bakedImage = StrokeRenderer.bake(drawing, size: canvasSize, scale: displayScale)
+    bakedImage = StrokeRenderer.bake(
+      drawing,
+      size: canvasSize,
+      scale: displayScale,
+      paperStyle: paperStyle
+    )
     bakedStrokeCount = drawing.strokes.count
   }
 
@@ -761,7 +776,7 @@ struct DrawingView: View {
         onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
       .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .padding(.horizontal, Theme.Spacing.s4)
+      .pageHorizontalPadding()
 
       DrawingToolbar(
         tool: $tool,
@@ -770,7 +785,7 @@ struct DrawingView: View {
         canUndo: undoStack.canUndo,
         onUndo: { undoStack.undo(drawing: &drawing) }
       )
-      .padding(.horizontal, Theme.Spacing.s4)
+      .pageHorizontalPadding()
 
       HStack {
         Button("Clear") {
