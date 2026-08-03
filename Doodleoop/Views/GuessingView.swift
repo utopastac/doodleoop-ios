@@ -24,6 +24,7 @@ struct GuessingView: View {
         Spacer()
         PhaseCountdown(endsAt: state?.phaseEndsAt)
       }
+      .padding(.trailing, Theme.Sizing.leaveButtonReserve)
       .pageHorizontalPadding()
 
       Text("What is this a drawing of?")

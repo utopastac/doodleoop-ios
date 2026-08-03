@@ -12,6 +12,7 @@ struct LobbyView: View {
         Text(session.isHost ? "Your lobby" : "Lobby")
           .themeText(.heading)
           .foregroundStyle(Theme.Text.primary)
+          .padding(.trailing, Theme.Sizing.leaveButtonReserve)
 
         Text("\(state.players.count) players · pass drawings to the left")
           .themeText(.labelSmall)
@@ -97,15 +98,11 @@ struct LobbyView: View {
           .doodleButton(.primary)
           .disabled(state.players.count < 2 || session.draftCategory.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
-
-        Button(DoodleLabel.bracketed("Leave"), role: .destructive) {
-          session.leaveGame()
-        }
-        .doodleButton(.tertiary)
       }
       .padding(.horizontal, Theme.Layout.pageMargin)
+      .padding(.top, Theme.Spacing.s3)
       .paperBackground()
       .pageMargins()
+    }
   }
-}
 }

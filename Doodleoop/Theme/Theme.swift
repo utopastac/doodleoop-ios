@@ -122,6 +122,8 @@ enum Theme {
     static let dotGridCell: CGFloat = 20
     /// Pitch between ruled-paper horizontal lines.
     static let ruleSpacing: CGFloat = 28
+    /// Trailing inset so top-row content clears the global leave control.
+    static let leaveButtonReserve: CGFloat = inputHeight + Spacing.s2
   }
 
   enum Borders {
@@ -134,6 +136,8 @@ enum Theme {
 
   enum Radius {
     static let none: CGFloat = 0
+    /// Figma `radius/sm` — icon buttons, doodle controls.
+    static let xs: CGFloat = 2
     static let sm: CGFloat = 4
     static let md: CGFloat = 8
     static let lg: CGFloat = 12
@@ -162,7 +166,9 @@ enum Theme {
     static let body: CGFloat = 17
     static let title3: CGFloat = 20
     static let title2: CGFloat = 22
-    static let title1: CGFloat = 28
+    static let title1: CGFloat = 34
+    /// Drawing-page timer (`00.45`).
+    static let timer: CGFloat = 36
     static let largeTitle: CGFloat = 44
   }
 
@@ -175,15 +181,19 @@ enum Theme {
     static let body: CGFloat = 22
     static let title3: CGFloat = 25
     static let title2: CGFloat = 28
-    static let title1: CGFloat = 34
+    static let title1: CGFloat = 38
+    static let timer: CGFloat = 36
     static let largeTitle: CGFloat = 48
   }
 
   /// Named text styles from the design system.
   enum TextStyle: CaseIterable {
     case display
+    /// Fraunces Bold at title-1 — drawing prompt / category.
     case heading
     case subheading
+    /// Space Mono Regular timer (`00.45`).
+    case timer
     case body
     case bodyStrong
     case label
@@ -197,9 +207,11 @@ enum Theme {
       case .display:
         .custom(FontFamily.primaryBold, size: FontSize.largeTitle)
       case .heading:
-        .custom(FontFamily.monoBold, size: FontSize.title1)
+        .custom(FontFamily.primaryBold, size: FontSize.title1)
       case .subheading:
         .custom(FontFamily.monoBold, size: FontSize.title2)
+      case .timer:
+        .custom(FontFamily.monoRegular, size: FontSize.timer)
       case .body:
         .custom(FontFamily.monoRegular, size: FontSize.body)
       case .bodyStrong:
@@ -231,6 +243,7 @@ enum Theme {
       case .display: LineHeight.largeTitle
       case .heading: LineHeight.title1
       case .subheading: LineHeight.title2
+      case .timer: LineHeight.timer
       case .body, .bodyStrong, .button: LineHeight.body
       case .label: LineHeight.subheadline
       case .labelSmall: LineHeight.footnote
@@ -244,6 +257,7 @@ enum Theme {
       case .display: FontSize.largeTitle
       case .heading: FontSize.title1
       case .subheading: FontSize.title2
+      case .timer: FontSize.timer
       case .body, .bodyStrong: FontSize.body
       case .label, .button: FontSize.subheadline
       case .labelSmall: FontSize.footnote

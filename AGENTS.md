@@ -30,3 +30,20 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 - `localPlayerId` — active seat on this phone
 - `hostId` — lobby creator seat
 - Pad `id` — starter seat for that chain
+
+## Icons (Phosphor)
+
+- Use **Phosphor Icons, regular weight only**.
+- **Only add the glyphs we need** — do not vendor the full set.
+- Catalog entries live under `Doodleoop/Assets.xcassets/Icon*.imageset` as template SVGs; names are mapped in `Doodleoop/Theme/PhosphorIcon.swift`.
+- When a screen needs a new icon: pull that single regular SVG from [`phosphor-icons/core`](https://github.com/phosphor-icons/core) (`assets/regular/<name>.svg`), add an imageset with `template-rendering-intent`, and extend `PhosphorIcon`.
+
+## Leaving a game
+
+- In-game screens (host/joiner) show a global **leave** control via `.leaveGameChrome()` on `ContentView`’s game flow — Phosphor `x`, top trailing.
+- Confirm with the dialog in `LeaveGameButton` before calling `session.leaveGame()`.
+- Top-row content that sits on the trailing edge should pad with `Theme.Sizing.leaveButtonReserve` so it doesn’t collide with the chrome.
+
+## Drawing canvas
+
+- The in-game drawing surface stays a **square** (`aspectRatio(1)`). Do not stretch it to fill arbitrary aspect ratios.

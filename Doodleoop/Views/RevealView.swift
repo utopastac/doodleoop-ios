@@ -12,10 +12,14 @@ struct RevealView: View {
       Text("Reveal")
         .themeText(.heading)
         .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.trailing, Theme.Sizing.leaveButtonReserve)
+        .pageHorizontalPadding()
       if let starter {
         Text("Started by \(starter.name)")
           .themeText(.label)
           .foregroundStyle(Theme.Text.secondary)
+          .pageHorizontalPadding()
       }
 
       ScrollView {

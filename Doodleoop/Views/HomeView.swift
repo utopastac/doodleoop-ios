@@ -151,7 +151,7 @@ struct HomeView: View {
               .foregroundStyle(Theme.Text.primary)
               .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
               .background(Theme.Paper.white)
-              .clipShape(RoundedRectangle(cornerRadius: 2, style: .circular))
+              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
           }
           .buttonStyle(.plain)
           .accessibilityLabel("Settings")

@@ -658,112 +658,142 @@ struct DrawingToolbar: View {
     widthByTool[tool] ?? tool.defaultWidth
   }
 
+  /// Preview dot diameters for the four nib slots (Figma brush-size row).
+  private let nibPreviewSizes: [CGFloat] = [12, 20, 28, 36]
+
   var body: some View {
-    VStack(spacing: Theme.Spacing.s3) {
-      HStack(spacing: Theme.Spacing.s2) {
-        ForEach(DrawingTool.allCases, id: \.self) { option in
-          Button {
-            tool = option
-          } label: {
-            Image(systemName: option.systemImage)
-              .font(.system(size: Theme.Sizing.iconMd, weight: .semibold))
-              .foregroundStyle(tool == option ? Theme.Background.primary : Theme.Text.secondary)
-              .frame(width: Theme.Sizing.touchTarget, height: Theme.Sizing.touchTarget)
-              .background(tool == option ? Theme.Text.primary : Theme.Background.tertiary)
-              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel(option.displayName)
-        }
-
-        Spacer(minLength: Theme.Spacing.s1)
-
-        Button {
-          onUndo?()
-        } label: {
-          Image(systemName: "arrow.uturn.backward")
-            .font(.system(size: Theme.Sizing.iconMd, weight: .semibold))
-            .foregroundStyle(canUndo ? Theme.Text.secondary : Theme.Text.placeholder)
-            .frame(width: Theme.Sizing.touchTarget, height: Theme.Sizing.touchTarget)
-            .background(canUndo ? Theme.Background.tertiary : Theme.Background.secondary)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .disabled(!canUndo)
-        .accessibilityLabel("Undo")
-      }
-
-      HStack(spacing: Theme.Spacing.s2) {
-        ForEach(tool.availableWidths, id: \.self) { width in
-          Button {
-            widthByTool[tool] = width
-          } label: {
-            ZStack {
-              RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
-                .fill(Theme.Background.tertiary)
-              RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
-                .strokeBorder(
-                  selectedWidth == width ? Theme.Stroke.emphasis : Color.clear,
-                  lineWidth: Theme.Borders.thick
-                )
-              sizePreview(for: width)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: Theme.Sizing.touchTarget)
-            .contentShape(Rectangle())
-          }
-          .buttonStyle(.plain)
-          .accessibilityLabel("Nib \(Int(width))")
-        }
-      }
-
-      if !tool.isEraser {
-        HStack(spacing: 0) {
-          ForEach(DrawingPalette.hexes, id: \.self) { hex in
-            Button {
-              colorHex = hex
-            } label: {
-              Circle()
-                .fill(Color(drawingHex: hex))
-                .padding(5)
-                .overlay {
-                  if colorHex == hex {
-                    Circle()
-                      .strokeBorder(Theme.Stroke.emphasis, lineWidth: Theme.Borders.heavy)
-                      .padding(2)
-                  }
-                }
-            }
-            .buttonStyle(.plain)
-            .frame(maxWidth: .infinity)
-            .accessibilityLabel("Color \(hex)")
-          }
-        }
-        .padding(.horizontal, Theme.Spacing.s1)
-        .padding(.vertical, Theme.Spacing.s1 + 2)
-        .background(Theme.Background.secondary)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
-      }
+    VStack(spacing: Theme.Spacing.s0) {
+      toolsRow
+      sizesRow
+      swatchesRow
     }
+    .gridBand()
   }
 
-  @ViewBuilder
-  private func sizePreview(for width: Double) -> some View {
-    let fill = tool.isEraser
-      ? Theme.Text.placeholder
-      : Color(drawingHex: colorHex).opacity(tool.opacity)
-    // Scale preview dots so the three nibs stay visually distinct at larger widths.
-    let previewScale = 0.45
-    Capsule()
-      .fill(fill)
-      .frame(
-        width: tool.usesFlatTip
-          ? min(28, max(10, width * 0.45))
-          : min(26, max(6, width * previewScale * 1.15)),
-        height: tool.usesFlatTip
-          ? min(20, max(6, width * 0.28))
-          : min(26, max(5, width * previewScale))
-      )
+  private var toolsRow: some View {
+    HStack(spacing: 0) {
+      ForEach(Array(DrawingTool.toolbarOrder.enumerated()), id: \.element) { index, option in
+        if index > 0 { Spacer(minLength: 0) }
+        toolButton(option)
+      }
+      Spacer(minLength: 0)
+      undoButton
+    }
+    .padding(.horizontal, Theme.Spacing.s2)
+    .padding(.vertical, Theme.Spacing.s1)
+    .frame(height: 56)
+  }
+
+  private var sizesRow: some View {
+    HStack(spacing: Theme.Spacing.s1) {
+      ForEach(Array(tool.availableWidths.enumerated()), id: \.offset) { index, width in
+        Button {
+          widthByTool[tool] = width
+        } label: {
+          let preview = nibPreviewSizes[min(index, nibPreviewSizes.count - 1)]
+          ZStack {
+            RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular)
+              .strokeBorder(
+                selectedWidth == width ? Theme.Ink.deep : Color.clear,
+                lineWidth: Theme.Borders.heavy
+              )
+            Circle()
+              .fill(tool.isEraser ? Theme.Ink.deep : Color(drawingHex: colorHex))
+              .frame(width: preview, height: preview)
+              .overlay {
+                if colorHex.uppercased() == "#FFFFFF" || colorHex.uppercased() == "#FFFFFFFF" {
+                  Circle().strokeBorder(Theme.Stroke.subtle, lineWidth: Theme.Borders.thin)
+                }
+              }
+          }
+          .frame(maxWidth: .infinity)
+          .frame(height: 48)
+          .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Nib \(Int(width))")
+      }
+    }
+    .padding(.horizontal, Theme.Spacing.s2)
+    .padding(.vertical, Theme.Spacing.s1)
+  }
+
+  private var swatchesRow: some View {
+    HStack {
+      ForEach(DrawingPalette.hexes, id: \.self) { hex in
+        let selected = colorHex.caseInsensitiveCompare(hex) == .orderedSame
+        Button {
+          colorHex = hex
+        } label: {
+          Circle()
+            .fill(Color(drawingHex: hex))
+            .frame(width: selected ? 40 : 28, height: selected ? 40 : 28)
+            .overlay {
+              Circle()
+                .strokeBorder(
+                  selected ? Theme.Ink.deep : swatchEdge(for: hex),
+                  lineWidth: selected ? Theme.Borders.heavy : Theme.Borders.thin
+                )
+            }
+        }
+        .buttonStyle(.plain)
+        .frame(maxWidth: .infinity)
+        .accessibilityLabel("Color \(hex)")
+      }
+    }
+    .padding(.horizontal, Theme.Spacing.s2)
+    .padding(.vertical, Theme.Spacing.s1)
+    .frame(height: 56)
+  }
+
+  private func toolButton(_ option: DrawingTool) -> some View {
+    let selected = tool == option
+    return Button {
+      tool = option
+    } label: {
+      option.phosphorIcon.image
+        .resizable()
+        .renderingMode(.template)
+        .scaledToFit()
+        .frame(width: Theme.Sizing.iconLg + 8, height: Theme.Sizing.iconLg + 8)
+        .foregroundStyle(selected ? Theme.Paper.tan : Theme.Ink.deep)
+        .frame(width: 48, height: 48)
+        .background(selected ? Theme.Ink.deep : Color.clear)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel(option.displayName)
+    .accessibilityAddTraits(selected ? .isSelected : [])
+  }
+
+  private var undoButton: some View {
+    Button {
+      onUndo?()
+    } label: {
+      PhosphorIcon.undo.image
+        .resizable()
+        .renderingMode(.template)
+        .scaledToFit()
+        .frame(width: Theme.Sizing.iconLg + 8, height: Theme.Sizing.iconLg + 8)
+        .foregroundStyle(canUndo ? Theme.Ink.deep : Theme.Text.placeholder)
+        .frame(width: 48, height: 48)
+        .contentShape(Rectangle())
+    }
+    .buttonStyle(.plain)
+    .disabled(!canUndo)
+    .accessibilityLabel("Undo")
+  }
+
+  private func hexIsLight(_ hex: String) -> Bool {
+    let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased()
+    return cleaned == "FFFFFF" || cleaned == "FFFFFFFF"
+  }
+
+  private func swatchEdge(for hex: String) -> Color {
+    if hexIsLight(hex) {
+      return Theme.Ink.deep.opacity(0.25)
+    }
+    return Color(drawingHex: hex).opacity(0.55)
   }
 }
 
@@ -792,21 +822,24 @@ struct DrawingView: View {
         return state.category
       }
     }()
+    let canSubmit = !drawing.isEmpty
+      && !(state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
 
-    VStack(spacing: Theme.Spacing.s3) {
-      HStack(alignment: .firstTextBaseline) {
-        Text("Draw")
-          .themeText(.heading)
-          .foregroundStyle(Theme.Text.primary)
-        Spacer()
-        PhaseCountdown(endsAt: state?.phaseEndsAt)
-      }
-      .pageHorizontalPadding()
+    VStack(spacing: 0) {
+      headerBar(canSubmit: canSubmit)
+        .pageHorizontalPadding()
+        .padding(.top, Theme.Spacing.s3)
 
       Text(prompt)
-        .themeText(.subheading)
-        .multilineTextAlignment(.center)
-        .foregroundStyle(Theme.Accent.default)
+        .themeText(.heading)
+        .multilineTextAlignment(.leading)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .pageHorizontalPadding()
+        .padding(.top, Theme.Spacing.s4)
+        .padding(.bottom, Theme.Spacing.s5)
+
+      Spacer(minLength: Theme.Spacing.s2)
 
       DrawingCanvas(
         drawing: $drawing,
@@ -815,8 +848,11 @@ struct DrawingView: View {
         lineWidth: widthByTool[tool] ?? tool.defaultWidth,
         onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .aspectRatio(1, contentMode: .fit)
+      .frame(maxWidth: .infinity)
       .pageHorizontalPadding()
+
+      Spacer(minLength: Theme.Spacing.s4)
 
       DrawingToolbar(
         tool: $tool,
@@ -826,34 +862,60 @@ struct DrawingView: View {
         onUndo: { undoStack.undo(drawing: &drawing) }
       )
       .pageHorizontalPadding()
-
-      HStack {
-        Button("Clear") {
-          undoStack.registerClear(before: drawing)
-          drawing = .empty
-        }
-        .themeText(.label)
-        .foregroundStyle(Theme.Text.secondary)
-        .disabled(drawing.isEmpty)
-        Spacer()
-        Button(DoodleLabel.bracketed("Done")) {
-          session.submitDrawing(drawing)
-          drawing = .empty
-          undoStack.reset()
-        }
-        .doodleButton(.primary)
-        .frame(width: 140)
-        .disabled(drawing.isEmpty || (state?.submittedPlayerIds.contains(session.localPlayerId) ?? false))
-      }
-      .pageHorizontalPadding()
       .padding(.bottom, Theme.Spacing.s3)
     }
-    .padding(.top, Theme.Spacing.s4)
-    .paperBackground()
+    .background {
+      Theme.Paper.tan.ignoresSafeArea()
+    }
     .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
     }
+  }
+
+  private func headerBar(canSubmit: Bool) -> some View {
+    HStack(alignment: .center, spacing: Theme.Spacing.s2) {
+      PhaseCountdown(endsAt: session.state?.phaseEndsAt, style: .timer)
+      Spacer(minLength: Theme.Spacing.s2)
+      clearButton
+      doneButton(canSubmit: canSubmit)
+    }
+    .padding(.trailing, Theme.Sizing.leaveButtonReserve)
+  }
+
+  private var clearButton: some View {
+    Button {
+      undoStack.registerClear(before: drawing)
+      drawing = .empty
+    } label: {
+      PhosphorIcon.trash.image
+        .resizable()
+        .renderingMode(.template)
+        .scaledToFit()
+        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
+        .foregroundStyle(Theme.Paper.tan)
+        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+        .background(Theme.Ink.deep.opacity(drawing.isEmpty ? 0.35 : 1))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    }
+    .buttonStyle(.plain)
+    .disabled(drawing.isEmpty)
+    .accessibilityLabel("Clear")
+  }
+
+  private func doneButton(canSubmit: Bool) -> some View {
+    Button(DoodleLabel.bracketed("Done")) {
+      session.submitDrawing(drawing)
+      drawing = .empty
+      undoStack.reset()
+    }
+    .themeText(.button)
+    .foregroundStyle(Theme.Paper.tan.opacity(canSubmit ? 1 : 0.5))
+    .padding(.horizontal, Theme.Spacing.s5)
+    .frame(height: Theme.Sizing.inputHeight)
+    .background(Theme.Ink.deep.opacity(canSubmit ? 1 : 0.35))
+    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    .disabled(!canSubmit)
   }
 
   /// Submit whatever is on the canvas when time runs out so work isn’t lost to expireTurn.

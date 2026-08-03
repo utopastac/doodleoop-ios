@@ -58,15 +58,6 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
     }
   }
 
-  var systemImage: String {
-    switch self {
-    case .pencil: return "pencil"
-    case .pen: return "pencil.tip"
-    case .highlighter: return "highlighter"
-    case .eraser: return "eraser"
-    }
-  }
-
   /// Soft graphite vs solid ink vs translucent marker wash.
   var opacity: Double {
     switch self {
@@ -86,12 +77,13 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
     }
   }
 
+  /// Four nib sizes — matches the drawing-page brush-size row.
   var availableWidths: [Double] {
     switch self {
-    case .pencil: return [4, 10, 22]
-    case .pen: return [5, 12, 28]
-    case .highlighter: return [18, 34, 56]
-    case .eraser: return [16, 36, 64]
+    case .pencil: return [3, 8, 16, 28]
+    case .pen: return [4, 10, 18, 32]
+    case .highlighter: return [14, 24, 40, 56]
+    case .eraser: return [12, 24, 40, 64]
     }
   }
 
@@ -101,22 +93,21 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
   var isEraser: Bool { self == .eraser }
 }
 
-/// Simple 10-swatch ink set for doodling.
+/// Drawing-page swatches (Figma Drawing → swatches).
 enum DrawingPalette {
   static let hexes: [String] = [
-    "#1F2329", // ink
-    "#6B7280", // slate
-    "#E85A54", // coral
-    "#F08A3A", // orange
-    "#E6AD2E", // mustard
-    "#3D9A4A", // green
-    "#1F8C85", // teal
-    "#3B6FD9", // blue
-    "#7B5CDB", // purple
-    "#E05A9A", // pink
+    "#FFFFFF", // white
+    "#000000", // black
+    "#6176FF", // blue
+    "#56CD38", // green
+    "#EC6363", // red
+    "#EEDB4D", // yellow
+    "#EF68C8", // pink
+    "#EE9048", // orange
   ]
 
-  static let defaultHex = hexes[0]
+  /// Default to black — white is available but a poor first stroke.
+  static let defaultHex = hexes[1]
 }
 
 struct Stroke: Codable, Equatable, Identifiable {

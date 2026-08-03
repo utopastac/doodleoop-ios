@@ -55,7 +55,7 @@ struct DoodleButtonStyle: ButtonStyle {
       .frame(maxWidth: .infinity)
       .frame(height: kind.height)
       .background(kind.background.opacity(configuration.isPressed ? 0.88 : 1))
-      .clipShape(RoundedRectangle(cornerRadius: 2, style: .circular))
+      .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
   }
 }
 

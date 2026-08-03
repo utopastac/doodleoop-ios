@@ -386,9 +386,9 @@ extension Theme.TextStyle {
   var uiFont: UIFont {
     let name: String = {
       switch self {
-      case .display: Theme.FontFamily.primaryBold
-      case .heading, .subheading, .bodyStrong: Theme.FontFamily.monoBold
-      case .body, .label, .labelSmall, .caption, .overline, .button: Theme.FontFamily.monoRegular
+      case .display, .heading: Theme.FontFamily.primaryBold
+      case .subheading, .bodyStrong: Theme.FontFamily.monoBold
+      case .body, .timer, .label, .labelSmall, .caption, .overline, .button: Theme.FontFamily.monoRegular
       }
     }()
     return UIFont(name: name, size: fontSize) ?? .systemFont(ofSize: fontSize)

@@ -11,6 +11,7 @@ struct ContentView: View {
           HomeView()
         case .host, .joiner:
           gameFlow
+            .leaveGameChrome()
         }
       }
 
