@@ -281,6 +281,12 @@ enum StrokeRenderer {
       context.blendMode = .multiply
       context.stroke(path, with: .color(color), style: style)
       context.blendMode = .normal
+
+    case .eraser:
+      // Punch through prior ink on the same canvas (paper stays in a sibling layer when baking).
+      context.blendMode = .destinationOut
+      context.stroke(path, with: .color(.black), style: style)
+      context.blendMode = .normal
     }
   }
 
@@ -387,27 +393,33 @@ struct DrawingCanvas: View {
   @State private var bakedStrokeCount = 0
   @State private var canvasSize: CGSize = .zero
 
-  private var sheetShape: RoundedRectangle {
-    RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-  }
-
   var body: some View {
+    let isLiveErasing = currentStroke?.tool.isEraser == true
+
     ZStack {
-      if let bakedImage {
+      // Hide the bake while live-erasing so destinationOut can punch through ink in one canvas.
+      if let bakedImage, !isLiveErasing {
         Image(uiImage: bakedImage)
           .resizable()
           .interpolation(.high)
           .frame(maxWidth: .infinity, maxHeight: .infinity)
       }
 
-      // Only the in-progress stroke is redrawn while the finger moves.
       Canvas { context, size in
-        if let currentStroke {
+        if isLiveErasing {
+          StrokeRenderer.drawDrawing(
+            drawing,
+            liveStroke: currentStroke,
+            in: &context,
+            size: size
+          )
+        } else if let currentStroke {
+          // Only the in-progress stroke is redrawn while the finger moves.
           StrokeRenderer.draw(currentStroke, in: &context, size: size, live: true)
         }
       }
     }
-    .paperSurface(paperStyle, in: sheetShape)
+    .paperSurface(paperStyle, in: Rectangle())
     .background {
       GeometryReader { geo in
         Color.clear
@@ -640,7 +652,7 @@ struct DrawingToolbar: View {
 
   var body: some View {
     VStack(spacing: Theme.Spacing.s3) {
-      HStack(spacing: Theme.Spacing.s2 + 2) {
+      HStack(spacing: Theme.Spacing.s2) {
         ForEach(DrawingTool.allCases, id: \.self) { option in
           Button {
             tool = option
@@ -656,6 +668,8 @@ struct DrawingToolbar: View {
           .accessibilityLabel(option.displayName)
         }
 
+        Spacer(minLength: Theme.Spacing.s1)
+
         Button {
           onUndo?()
         } label: {
@@ -669,61 +683,79 @@ struct DrawingToolbar: View {
         .buttonStyle(.plain)
         .disabled(!canUndo)
         .accessibilityLabel("Undo")
-
-        Spacer(minLength: Theme.Spacing.s2)
-
-        HStack(spacing: Theme.Spacing.s2) {
-          ForEach(tool.availableWidths, id: \.self) { width in
-            Button {
-              widthByTool[tool] = width
-            } label: {
-              ZStack {
-                Circle()
-                  .strokeBorder(
-                    selectedWidth == width ? Theme.Stroke.emphasis : Theme.Stroke.subtle,
-                    lineWidth: selectedWidth == width ? Theme.Borders.thick : Theme.Borders.thin
-                  )
-                  .frame(width: Theme.Sizing.buttonHeight, height: Theme.Sizing.buttonHeight)
-                Capsule()
-                  .fill(Color(drawingHex: colorHex).opacity(tool.opacity))
-                  .frame(
-                    width: tool.usesFlatTip ? min(22, width * 0.7) : min(18, width * 1.4),
-                    height: min(18, max(3, width * (tool.usesFlatTip ? 0.55 : 0.9)))
-                  )
-              }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Nib \(Int(width))")
-          }
-        }
       }
 
-      HStack(spacing: 0) {
-        ForEach(DrawingPalette.hexes, id: \.self) { hex in
+      HStack(spacing: Theme.Spacing.s2) {
+        ForEach(tool.availableWidths, id: \.self) { width in
           Button {
-            colorHex = hex
+            widthByTool[tool] = width
           } label: {
-            Circle()
-              .fill(Color(drawingHex: hex))
-              .padding(5)
-              .overlay {
-                if colorHex == hex {
-                  Circle()
-                    .strokeBorder(Theme.Stroke.emphasis, lineWidth: Theme.Borders.heavy)
-                    .padding(2)
-                }
-              }
+            ZStack {
+              RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .fill(Theme.Background.tertiary)
+              RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+                .strokeBorder(
+                  selectedWidth == width ? Theme.Stroke.emphasis : Color.clear,
+                  lineWidth: Theme.Borders.thick
+                )
+              sizePreview(for: width)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: Theme.Sizing.touchTarget)
+            .contentShape(Rectangle())
           }
           .buttonStyle(.plain)
-          .frame(maxWidth: .infinity)
-          .accessibilityLabel("Color \(hex)")
+          .accessibilityLabel("Nib \(Int(width))")
         }
       }
-      .padding(.horizontal, Theme.Spacing.s1)
-      .padding(.vertical, Theme.Spacing.s1 + 2)
-      .background(Theme.Background.secondary)
-      .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+
+      if !tool.isEraser {
+        HStack(spacing: 0) {
+          ForEach(DrawingPalette.hexes, id: \.self) { hex in
+            Button {
+              colorHex = hex
+            } label: {
+              Circle()
+                .fill(Color(drawingHex: hex))
+                .padding(5)
+                .overlay {
+                  if colorHex == hex {
+                    Circle()
+                      .strokeBorder(Theme.Stroke.emphasis, lineWidth: Theme.Borders.heavy)
+                      .padding(2)
+                  }
+                }
+            }
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("Color \(hex)")
+          }
+        }
+        .padding(.horizontal, Theme.Spacing.s1)
+        .padding(.vertical, Theme.Spacing.s1 + 2)
+        .background(Theme.Background.secondary)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous))
+      }
     }
+  }
+
+  @ViewBuilder
+  private func sizePreview(for width: Double) -> some View {
+    let fill = tool.isEraser
+      ? Theme.Text.placeholder
+      : Color(drawingHex: colorHex).opacity(tool.opacity)
+    // Scale preview dots so the three nibs stay visually distinct at larger widths.
+    let previewScale = 0.45
+    Capsule()
+      .fill(fill)
+      .frame(
+        width: tool.usesFlatTip
+          ? min(28, max(10, width * 0.45))
+          : min(26, max(6, width * previewScale * 1.15)),
+        height: tool.usesFlatTip
+          ? min(20, max(6, width * 0.28))
+          : min(26, max(5, width * previewScale))
+      )
   }
 }
 

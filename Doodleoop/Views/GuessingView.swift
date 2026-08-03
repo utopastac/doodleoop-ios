@@ -3,6 +3,8 @@ import SwiftUI
 struct GuessingView: View {
   @EnvironmentObject private var session: GameSession
   @State private var guess = ""
+  /// Width ÷ height from the tallest layout seen (keyboard dismissed).
+  @State private var drawingAspect: CGFloat?
 
   var body: some View {
     let drawing: Drawing? = {
@@ -29,9 +31,18 @@ struct GuessingView: View {
         .foregroundStyle(Theme.Text.secondary)
 
       if let drawing {
-        ReadOnlyDrawingView(drawing: drawing)
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .pageHorizontalPadding()
+        GeometryReader { geo in
+          let aspect = drawingAspect ?? (geo.size.width / max(geo.size.height, 1))
+          let width = min(geo.size.width, geo.size.height * aspect)
+          let height = width / aspect
+
+          ReadOnlyDrawingView(drawing: drawing)
+            .frame(width: width, height: height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onAppear { considerDrawingAspect(geo.size) }
+            .onChange(of: geo.size) { _, size in considerDrawingAspect(size) }
+        }
+        .pageHorizontalPadding()
       } else {
         Spacer()
         ProgressView("Waiting for drawing…")
@@ -64,6 +75,19 @@ struct GuessingView: View {
     }
   }
 
+  /// Prefer the roomiest (tallest) proposal so the keyboard shrinks the sheet uniformly.
+  private func considerDrawingAspect(_ size: CGSize) {
+    guard size.width > 1, size.height > 1 else { return }
+    let aspect = size.width / size.height
+    if let drawingAspect {
+      if aspect < drawingAspect {
+        self.drawingAspect = aspect
+      }
+    } else {
+      drawingAspect = aspect
+    }
+  }
+
   private func autoSubmitWhenTimerExpires(endsAt: Date?) async {
     guard let endsAt else { return }
     let delay = endsAt.timeIntervalSinceNow
@@ -88,10 +112,7 @@ struct ReadOnlyDrawingView: View {
     Canvas { context, size in
       StrokeRenderer.drawDrawing(drawing, in: &context, size: size)
     }
-    .paperSurface(
-      .crosses,
-      in: RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
-    )
+    .paperSurface(.crosses, in: Rectangle())
   }
 }
 

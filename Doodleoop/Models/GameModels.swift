@@ -47,12 +47,14 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
   case pencil
   case pen
   case highlighter
+  case eraser
 
   var displayName: String {
     switch self {
     case .pencil: return "Pencil"
     case .pen: return "Pen"
     case .highlighter: return "Highlighter"
+    case .eraser: return "Eraser"
     }
   }
 
@@ -61,6 +63,7 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
     case .pencil: return "pencil"
     case .pen: return "pencil.tip"
     case .highlighter: return "highlighter"
+    case .eraser: return "eraser"
     }
   }
 
@@ -70,27 +73,32 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
     case .pencil: return 0.72
     case .pen: return 1.0
     case .highlighter: return 0.38
+    case .eraser: return 1.0
     }
   }
 
   var defaultWidth: Double {
     switch self {
-    case .pencil: return 3
-    case .pen: return 4
-    case .highlighter: return 18
+    case .pencil: return 10
+    case .pen: return 12
+    case .highlighter: return 34
+    case .eraser: return 36
     }
   }
 
   var availableWidths: [Double] {
     switch self {
-    case .pencil: return [1.5, 3, 6]
-    case .pen: return [2, 4, 8]
-    case .highlighter: return [12, 18, 28]
+    case .pencil: return [4, 10, 22]
+    case .pen: return [5, 12, 28]
+    case .highlighter: return [18, 34, 56]
+    case .eraser: return [16, 36, 64]
     }
   }
 
-  /// Highlighter uses a flatter tip; pencil/pen are round.
+  /// Highlighter uses a flatter tip; pencil/pen/eraser are round.
   var usesFlatTip: Bool { self == .highlighter }
+
+  var isEraser: Bool { self == .eraser }
 }
 
 /// Simple 10-swatch ink set for doodling.
