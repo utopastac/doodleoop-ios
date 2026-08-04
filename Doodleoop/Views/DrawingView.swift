@@ -826,18 +826,14 @@ struct DrawingView: View {
       && !(state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
 
     VStack(spacing: 0) {
-      headerBar(canSubmit: canSubmit)
-        .pageHorizontalPadding()
-        .padding(.top, Theme.Spacing.s3)
-
       Text(prompt)
-        .themeText(.heading)
+        .themeText(.body)
         .multilineTextAlignment(.leading)
         .foregroundStyle(Theme.Text.primary)
-        .frame(maxWidth: .infinity, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
+        .padding(.trailing, Theme.Sizing.leaveButtonReserve)
         .pageHorizontalPadding()
-        .padding(.top, Theme.Spacing.s4)
-        .padding(.bottom, Theme.Spacing.s5)
+        .padding(.top, Theme.Spacing.s3)
 
       Spacer(minLength: Theme.Spacing.s2)
 
@@ -850,6 +846,9 @@ struct DrawingView: View {
       )
       .aspectRatio(1, contentMode: .fit)
       .frame(maxWidth: .infinity)
+      .overlay(alignment: .topTrailing) {
+        clearButton
+      }
       .pageHorizontalPadding()
 
       Spacer(minLength: Theme.Spacing.s4)
@@ -862,25 +861,23 @@ struct DrawingView: View {
         onUndo: { undoStack.undo(drawing: &drawing) }
       )
       .pageHorizontalPadding()
+
+      HStack(alignment: .bottom, spacing: Theme.Spacing.s2) {
+        PhaseCountdown(endsAt: session.state?.phaseEndsAt, style: .timer)
+          .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
+
+        saveButton(canSubmit: canSubmit)
+          .frame(maxWidth: .infinity)
+      }
+      .frame(height: Theme.Spacing.s10, alignment: .bottom)
+      .pageHorizontalPadding()
       .padding(.bottom, Theme.Spacing.s3)
     }
-    .background {
-      Theme.Paper.tan.ignoresSafeArea()
-    }
+    .paperBackground()
     .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
     }
-  }
-
-  private func headerBar(canSubmit: Bool) -> some View {
-    HStack(alignment: .center, spacing: Theme.Spacing.s2) {
-      PhaseCountdown(endsAt: session.state?.phaseEndsAt, style: .timer)
-      Spacer(minLength: Theme.Spacing.s2)
-      clearButton
-      doneButton(canSubmit: canSubmit)
-    }
-    .padding(.trailing, Theme.Sizing.leaveButtonReserve)
   }
 
   private var clearButton: some View {
@@ -893,9 +890,9 @@ struct DrawingView: View {
         .renderingMode(.template)
         .scaledToFit()
         .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-        .foregroundStyle(Theme.Paper.tan)
+        .foregroundStyle(Theme.Text.primary.opacity(drawing.isEmpty ? 0.35 : 1))
         .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
-        .background(Theme.Ink.deep.opacity(drawing.isEmpty ? 0.35 : 1))
+        .background(Theme.Paper.white)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
     }
     .buttonStyle(.plain)
@@ -903,8 +900,8 @@ struct DrawingView: View {
     .accessibilityLabel("Clear")
   }
 
-  private func doneButton(canSubmit: Bool) -> some View {
-    Button(DoodleLabel.bracketed("Done")) {
+  private func saveButton(canSubmit: Bool) -> some View {
+    Button(DoodleLabel.bracketed("Save")) {
       session.submitDrawing(drawing)
       drawing = .empty
       undoStack.reset()
@@ -912,6 +909,7 @@ struct DrawingView: View {
     .themeText(.button)
     .foregroundStyle(Theme.Paper.tan.opacity(canSubmit ? 1 : 0.5))
     .padding(.horizontal, Theme.Spacing.s5)
+    .frame(maxWidth: .infinity)
     .frame(height: Theme.Sizing.inputHeight)
     .background(Theme.Ink.deep.opacity(canSubmit ? 1 : 0.35))
     .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))

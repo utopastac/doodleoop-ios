@@ -65,7 +65,7 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     case .roundOver: return "Loop complete celebration"
     case .handoffOverlay: return "Full-screen seat handoff gate"
     case .avatarSetup: return "First-run doodle avatar"
-    case .paperStyles: return "Plain, dots, crosses, rules, parchment, textured"
+    case .paperStyles: return "Plain, dots, crosses, rules, parchment, textured, canvas"
     }
   }
 
@@ -128,8 +128,6 @@ struct ViewPreviewMenuView: View {
         switch preview {
         case .avatarSetup:
           AvatarSetupView(
-            title: "Draw your avatar",
-            subtitle: "One quick doodle — saved for every game.",
             initialDrawing: .empty,
             saveLabel: "That's me",
             onCancel: { sheetPreview = nil },

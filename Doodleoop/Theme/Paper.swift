@@ -18,6 +18,8 @@ enum PaperStyle: String, CaseIterable, Identifiable, Equatable {
   case parchment
   /// Photo texture asset (`PaperTexture`).
   case textured
+  /// Canvas weave photo asset (`PaperCanvas`).
+  case canvas
 
   static let storageKey = "appearance.paperStyle"
 
@@ -31,6 +33,7 @@ enum PaperStyle: String, CaseIterable, Identifiable, Equatable {
     case .ruled: "Rules"
     case .parchment: "Parchment"
     case .textured: "Textured"
+    case .canvas: "Canvas"
     }
   }
 
@@ -39,6 +42,7 @@ enum PaperStyle: String, CaseIterable, Identifiable, Equatable {
     case .plain, .textured: Theme.Paper.cream
     case .crosses, .dots, .ruled: Theme.Paper.white
     case .parchment: Theme.Paper.parchment
+    case .canvas: Theme.Paper.canvas
     }
   }
 }
@@ -81,17 +85,21 @@ struct PaperFill: View {
       case .parchment:
         ParchmentTexture()
       case .textured:
-        TexturedPaperImage()
+        PaperAssetImage(name: "PaperTexture")
+      case .canvas:
+        PaperAssetImage(name: "PaperCanvas")
       }
     }
   }
 }
 
 /// Full-bleed paper photo from the asset catalog.
-private struct TexturedPaperImage: View {
+private struct PaperAssetImage: View {
+  var name: String
+
   var body: some View {
     GeometryReader { geo in
-      Image("PaperTexture")
+      Image(name)
         .resizable()
         .scaledToFill()
         .frame(width: geo.size.width, height: geo.size.height)

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HomeView: View {
   @EnvironmentObject private var session: GameSession
+  @Namespace private var avatarZoomNamespace
   @State private var nameDraft = ""
   @State private var isEditingAvatar = false
   @State private var showRules = false
@@ -10,34 +11,30 @@ struct HomeView: View {
   @State private var showViewPreviews = false
   @State private var pendingPreview: ViewPreview?
 
-  private var showingHome: Bool {
-    session.hasSavedAvatar && !isEditingAvatar
-  }
+  private static let avatarZoomID = "homeAvatar"
 
   var body: some View {
     NavigationStack {
       Group {
-        if showingHome {
+        if session.hasSavedAvatar {
           homeContent
+            .navigationDestination(isPresented: $isEditingAvatar) {
+              avatarEditor
+            }
         } else {
           AvatarSetupView(
-            title: session.hasSavedAvatar ? "Redraw your avatar" : "Draw your avatar",
-            subtitle: session.hasSavedAvatar
-              ? "This doodle shows up next to your name."
-              : "One quick doodle — saved for every game.",
             initialDrawing: session.localAvatar,
-            saveLabel: session.hasSavedAvatar ? "Save" : "That's me",
-            onCancel: session.hasSavedAvatar ? { isEditingAvatar = false } : nil,
+            saveLabel: "That's me",
+            onCancel: nil,
             onSave: { drawing in
               session.updateAvatar(drawing)
-              isEditingAvatar = false
             }
           )
         }
       }
       .frame(maxWidth: .infinity, maxHeight: .infinity)
       .background {
-        (showingHome ? Theme.Background.broadsheet : Theme.Paper.cream)
+        (session.hasSavedAvatar ? Theme.Background.broadsheet : Theme.Paper.tan)
           .ignoresSafeArea()
       }
       .sheet(isPresented: $showSettings) {
@@ -59,6 +56,20 @@ struct HomeView: View {
         }
       }
     }
+  }
+
+  private var avatarEditor: some View {
+    AvatarSetupView(
+      initialDrawing: session.localAvatar,
+      saveLabel: "Save",
+      onCancel: { isEditingAvatar = false },
+      onSave: { drawing in
+        session.updateAvatar(drawing)
+        isEditingAvatar = false
+      }
+    )
+    .toolbar(.hidden, for: .navigationBar)
+    .navigationTransition(.zoom(sourceID: Self.avatarZoomID, in: avatarZoomNamespace))
   }
 
   private var homeContent: some View {
@@ -89,6 +100,7 @@ struct HomeView: View {
           .multilineTextAlignment(.center)
           .foregroundStyle(Theme.Text.primary)
           .frame(maxWidth: .infinity)
+          .fixedSize(horizontal: false, vertical: true)
           .pageHorizontalPadding()
           .padding(.vertical, Theme.Spacing.s6)
           .onLongPressGesture {
@@ -98,7 +110,11 @@ struct HomeView: View {
         Spacer(minLength: Theme.Spacing.s2)
 
         // Avatar flush to the page margin rails (exact content width)
-        HomeAvatarHero(drawing: session.localAvatar) {
+        HomeAvatarHero(
+          drawing: session.localAvatar,
+          zoomNamespace: avatarZoomNamespace,
+          zoomID: Self.avatarZoomID
+        ) {
           TextField("Your name", text: $nameDraft)
             .themeText(.subheading)
             .multilineTextAlignment(.center)
@@ -145,13 +161,23 @@ struct HomeView: View {
             showRules = true
           }
           .doodleButton(.tertiary)
-          .frame(width: 128)
+          .frame(width: 153)
 
-          Button(DoodleLabel.bracketed("History")) {
+          Button {
             showHistory = true
+          } label: {
+            PhosphorIcon.clockCounterClockwise.image
+              .resizable()
+              .renderingMode(.template)
+              .scaledToFit()
+              .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
+              .foregroundStyle(Theme.Text.primary)
+              .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+              .background(Theme.Paper.white)
+              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
           }
-          .doodleButton(.tertiary)
-          .frame(width: 120)
+          .buttonStyle(.plain)
+          .accessibilityLabel("History")
 
           Button {
             showSettings = true
@@ -185,15 +211,21 @@ struct HomeView: View {
 
 struct HomeAvatarHero<NameContent: View>: View {
   let drawing: Drawing
+  var zoomNamespace: Namespace.ID
+  var zoomID: String
   var onDrawingTap: (() -> Void)?
   @ViewBuilder var nameContent: () -> NameContent
 
   init(
     drawing: Drawing,
+    zoomNamespace: Namespace.ID,
+    zoomID: String,
     @ViewBuilder nameContent: @escaping () -> NameContent,
     onDrawingTap: (() -> Void)? = nil
   ) {
     self.drawing = drawing
+    self.zoomNamespace = zoomNamespace
+    self.zoomID = zoomID
     self.nameContent = nameContent
     self.onDrawingTap = onDrawingTap
   }
@@ -229,12 +261,12 @@ struct HomeAvatarHero<NameContent: View>: View {
     .padding(Theme.Spacing.s6)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .paperSurface(in: Circle())
+    .matchedTransitionSource(id: zoomID, in: zoomNamespace)
   }
 }
 
 struct AvatarSetupView: View {
-  let title: String
-  let subtitle: String
+  var title: String = "Your avatar"
   let initialDrawing: Drawing
   let saveLabel: String
   var onCancel: (() -> Void)?
@@ -248,20 +280,24 @@ struct AvatarSetupView: View {
     uniqueKeysWithValues: DrawingTool.allCases.map { ($0, $0.defaultWidth) }
   )
 
-  var body: some View {
-    VStack(spacing: Theme.Spacing.s3) {
-      Text(title)
-        .themeText(.heading)
-        .foregroundStyle(Theme.Text.primary)
-        .padding(.top, Theme.Spacing.s5)
-        .frame(maxWidth: .infinity)
-        .gridBand()
+  private var canSave: Bool { !drawing.isEmpty }
 
-      Text(subtitle)
-        .themeText(.label)
-        .multilineTextAlignment(.center)
-        .foregroundStyle(Theme.Text.secondary)
-        .padding(.horizontal, Theme.Spacing.s7)
+  var body: some View {
+    VStack(spacing: 0) {
+      HStack(alignment: .center, spacing: Theme.Spacing.s2) {
+        Text(title)
+          .themeText(.body)
+          .foregroundStyle(Theme.Text.primary)
+          .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
+
+        if let onCancel {
+          dismissButton(action: onCancel)
+        }
+      }
+      .pageHorizontalPadding()
+      .padding(.top, Theme.Spacing.s3)
+
+      Spacer(minLength: Theme.Spacing.s2)
 
       DrawingCanvas(
         drawing: $drawing,
@@ -272,9 +308,14 @@ struct AvatarSetupView: View {
       )
       .aspectRatio(1, contentMode: .fit)
       .clipShape(Circle())
-      .overlay(Circle().stroke(Theme.Stroke.subtle, lineWidth: Theme.Borders.thick))
+      .contentShape(Circle())
+      .frame(maxWidth: .infinity)
+      .overlay(alignment: .topTrailing) {
+        clearButton
+      }
       .pageHorizontalPadding()
-      .gridBand()
+
+      Spacer(minLength: Theme.Spacing.s4)
 
       DrawingToolbar(
         tool: $tool,
@@ -283,33 +324,68 @@ struct AvatarSetupView: View {
         canUndo: undoStack.canUndo,
         onUndo: { undoStack.undo(drawing: &drawing) }
       )
-      .padding(.horizontal, Theme.Spacing.s5)
-
-      HStack {
-        if let onCancel {
-          Button(DoodleLabel.bracketed("Cancel"), action: onCancel)
-            .doodleButton(.tertiary)
-        }
-        Button(DoodleLabel.bracketed("Clear")) {
-          undoStack.registerClear(before: drawing)
-          drawing = .empty
-        }
-        .doodleButton(.tertiary)
-        .disabled(drawing.isEmpty)
-        Spacer()
-        Button(DoodleLabel.bracketed(saveLabel)) { onSave(drawing) }
-          .doodleButton(.primary)
-          .frame(width: 160)
-          .disabled(drawing.isEmpty)
-      }
       .pageHorizontalPadding()
-      .gridBand()
-      .padding(.bottom, Theme.Spacing.s4)
+
+      saveButton
+        .frame(height: Theme.Spacing.s10, alignment: .bottom)
+        .pageHorizontalPadding()
+        .padding(.bottom, Theme.Spacing.s3)
     }
+    .paperBackground()
     .pageMargins()
     .onAppear {
       drawing = initialDrawing
       undoStack.reset()
     }
+  }
+
+  private var saveButton: some View {
+    Button(DoodleLabel.bracketed(saveLabel)) {
+      onSave(drawing)
+    }
+    .themeText(.button)
+    .foregroundStyle(Theme.Paper.tan.opacity(canSave ? 1 : 0.5))
+    .padding(.horizontal, Theme.Spacing.s5)
+    .frame(maxWidth: .infinity)
+    .frame(height: Theme.Sizing.inputHeight)
+    .background(Theme.Ink.deep.opacity(canSave ? 1 : 0.35))
+    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    .disabled(!canSave)
+  }
+
+  private func dismissButton(action: @escaping () -> Void) -> some View {
+    Button(action: action) {
+      PhosphorIcon.x.image
+        .resizable()
+        .renderingMode(.template)
+        .scaledToFit()
+        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+        .background(Theme.Paper.white)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Cancel")
+  }
+
+  private var clearButton: some View {
+    Button {
+      undoStack.registerClear(before: drawing)
+      drawing = .empty
+    } label: {
+      PhosphorIcon.trash.image
+        .resizable()
+        .renderingMode(.template)
+        .scaledToFit()
+        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
+        .foregroundStyle(Theme.Text.primary.opacity(drawing.isEmpty ? 0.35 : 1))
+        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+        .background(Theme.Paper.white)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    }
+    .buttonStyle(.plain)
+    .disabled(drawing.isEmpty)
+    .accessibilityLabel("Clear")
   }
 }

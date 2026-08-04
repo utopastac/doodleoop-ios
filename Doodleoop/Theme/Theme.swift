@@ -11,6 +11,8 @@ enum Theme {
     static let tan = Color(red: 0.863, green: 0.835, blue: 0.784)
     /// Aged parchment — warmer and a touch duskier than cream.
     static let parchment = Color(red: 0.910, green: 0.855, blue: 0.745)
+    /// Primed canvas weave — warm linen underlay for `PaperCanvas`.
+    static let canvas = Color(red: 0.882, green: 0.831, blue: 0.780)
     /// `paper/broadsheet` — warm newsprint peach.
     static let broadsheet = Color(red: 0.973, green: 0.839, blue: 0.714)
   }
@@ -146,6 +148,12 @@ enum Theme {
     static let full: CGFloat = 9999
   }
 
+  /// Screen / overlay transitions (phase changes, handoff gate).
+  enum Motion {
+    static let screen = Animation.easeInOut(duration: 0.35)
+    static let handoff = Animation.easeInOut(duration: 0.28)
+  }
+
   // MARK: - Typography
 
   enum FontFamily {
@@ -273,7 +281,7 @@ enum Theme {
       }
     }
 
-    /// Extra spacing for pre–iOS 26 `.lineSpacing` (adds on top of `uiFont.lineHeight`).
+    /// Extra spacing for `.lineSpacing` when loosening (adds on top of `uiFont.lineHeight`).
     /// Zero when the Figma line height is at or below the font's natural metrics.
     var lineSpacing: CGFloat {
       max(0, lineHeight - uiFont.lineHeight)
@@ -281,22 +289,61 @@ enum Theme {
   }
 }
 
+/// Pulls baselines to a Figma line height without clipping glyphs.
+///
+/// SwiftUI `.lineHeight(.exact)` sets the line *box* to that height, which crops
+/// Fraunces descenders when the target (e.g. 48) is below the font's natural
+/// metrics (~54). This renderer layouts at natural metrics, then redraws each
+/// line so consecutive baselines are `lineHeight` apart — matching Figma's
+/// overflow-visible behavior.
+///
+/// Important: do **not** shrink `sizeThatFits`. Compressing the reported height
+/// makes the layout engine fit fewer natural-height lines, which truncates
+/// multiline headlines with an ellipsis.
+private struct ThemeLineHeightRenderer: TextRenderer {
+  var lineHeight: CGFloat
+  var fontLineHeight: CGFloat
+
+  func draw(layout: Text.Layout, in ctx: inout GraphicsContext) {
+    let lines = Array(layout)
+    guard lines.count > 1, fontLineHeight > lineHeight + 0.5 else {
+      for line in lines { ctx.draw(line) }
+      return
+    }
+
+    let firstBaseline = lines[0].typographicBounds.origin.y
+    for (index, line) in lines.enumerated() {
+      var lineCtx = ctx
+      let targetBaseline = firstBaseline + CGFloat(index) * lineHeight
+      let dy = targetBaseline - line.typographicBounds.origin.y
+      if abs(dy) > 0.5 {
+        lineCtx.translateBy(x: 0, y: dy)
+      }
+      lineCtx.draw(line)
+    }
+  }
+}
+
 extension View {
   @ViewBuilder
   func themeText(_ style: Theme.TextStyle) -> some View {
-    if #available(iOS 26.0, *) {
-      // Baseline-to-baseline — matches Figma absolute line height (e.g. display 44/48).
-      self
-        .font(style.font)
-        .tracking(style.tracking)
-        .lineHeight(.exact(points: style.lineHeight))
-        .textCase(style.textCase)
+    let styled = self
+      .font(style.font)
+      .tracking(style.tracking)
+      .textCase(style.textCase)
+
+    if style.lineHeight + 0.5 < style.uiFont.lineHeight {
+      // Tighten below natural metrics without cropping ascenders/descenders.
+      styled.textRenderer(
+        ThemeLineHeightRenderer(
+          lineHeight: style.lineHeight,
+          fontLineHeight: style.uiFont.lineHeight
+        )
+      )
+    } else if #available(iOS 26.0, *), style.lineHeight > style.uiFont.lineHeight + 0.5 {
+      styled.lineHeight(.exact(points: style.lineHeight))
     } else {
-      self
-        .font(style.font)
-        .tracking(style.tracking)
-        .lineSpacing(style.lineSpacing)
-        .textCase(style.textCase)
+      styled.lineSpacing(style.lineSpacing)
     }
   }
 }
