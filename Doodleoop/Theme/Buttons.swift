@@ -76,6 +76,66 @@ enum DoodleLabel {
   }
 }
 
+/// Equal-width segmented control — same language as Create / Join on home:
+/// bracketed mono labels, ink selected fill, paper unselected, grid-line gutters.
+struct DoodleSegmentedControl<Option: Hashable>: View {
+  let options: [Option]
+  @Binding var selection: Option
+  let title: (Option) -> String
+
+  init(
+    options: [Option],
+    selection: Binding<Option>,
+    title: @escaping (Option) -> String
+  ) {
+    self.options = options
+    self._selection = selection
+    self.title = title
+  }
+
+  init(
+    options: [Option],
+    selection: Binding<Option>,
+    title keyPath: KeyPath<Option, String>
+  ) {
+    self.options = options
+    self._selection = selection
+    self.title = { $0[keyPath: keyPath] }
+  }
+
+  var body: some View {
+    HStack(spacing: 0) {
+      ForEach(Array(options.enumerated()), id: \.offset) { index, option in
+        let isSelected = option == selection
+        Button {
+          selection = option
+        } label: {
+          Text(DoodleLabel.bracketed(title(option)))
+            .themeText(.button)
+            .foregroundStyle(isSelected ? Theme.Paper.white : Theme.Ink.deep)
+            .frame(maxWidth: .infinity)
+            .frame(height: Theme.Sizing.inputHeight)
+            .background(isSelected ? Theme.Ink.deep : Theme.Paper.white)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+
+        if index < options.count - 1 {
+          GridLine(axis: .vertical)
+            .frame(maxHeight: .infinity)
+        }
+      }
+    }
+    .frame(height: Theme.Sizing.inputHeight)
+    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    .overlay {
+      RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular)
+        .strokeBorder(Theme.Stroke.subtle, lineWidth: Theme.Borders.thin)
+    }
+  }
+}
+
 // Legacy aliases used across screens — map onto the new kinds.
 struct PrimaryButtonStyle: ButtonStyle {
   var color: Color = Theme.Ink.deep

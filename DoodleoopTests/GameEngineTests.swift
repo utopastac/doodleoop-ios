@@ -62,6 +62,54 @@ final class GameEngineTests: XCTestCase {
 
     XCTAssertEqual(state.phase, .reveal)
     XCTAssertEqual(state.pads[0].steps.count, 3) // prompt + 2 contributions
+    XCTAssertEqual(state.revealPadIndex, 0)
+    XCTAssertEqual(state.revealStepIndex, 1)
+  }
+
+  func testAdvanceRevealStepsThenPadsThenRoundOver() {
+    var state = makeLobby(players: 2)
+    state = GameEngine.startRound(category: "Jobs", in: state)
+
+    for turn in 0..<2 {
+      for i in 0..<2 {
+        if turn % 2 == 0 {
+          let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.2, y: 0.3)])])
+          state = GameEngine.submitDrawing(playerId: "p\(i)", drawing: drawing, in: state)
+        } else {
+          state = GameEngine.submitGuess(playerId: "p\(i)", text: "guess-\(turn)-\(i)", in: state)
+        }
+      }
+    }
+
+    // Pad 0: first drawing already visible
+    XCTAssertEqual(state.phase, .reveal)
+    XCTAssertEqual(state.revealPadIndex, 0)
+    XCTAssertEqual(state.revealStepIndex, 1)
+    XCTAssertEqual(state.visibleRevealContributions.count, 1)
+
+    // Next → first guess on pad 0
+    state = GameEngine.advanceReveal(in: state)
+    XCTAssertEqual(state.revealPadIndex, 0)
+    XCTAssertEqual(state.revealStepIndex, 2)
+    XCTAssertEqual(state.visibleRevealContributions.count, 2)
+    XCTAssertFalse(state.isRevealFinished)
+
+    // Next → start pad 1 with first drawing
+    state = GameEngine.advanceReveal(in: state)
+    XCTAssertEqual(state.phase, .reveal)
+    XCTAssertEqual(state.revealPadIndex, 1)
+    XCTAssertEqual(state.revealStepIndex, 1)
+    XCTAssertEqual(state.visibleRevealContributions.count, 1)
+
+    // Next → last guess on pad 1
+    state = GameEngine.advanceReveal(in: state)
+    XCTAssertEqual(state.revealPadIndex, 1)
+    XCTAssertEqual(state.revealStepIndex, 2)
+    XCTAssertTrue(state.isRevealFinished)
+
+    // Finish → round over
+    state = GameEngine.advanceReveal(in: state)
+    XCTAssertEqual(state.phase, .roundOver)
   }
 
   func testAddPlayerStoresAvatar() {
@@ -88,6 +136,7 @@ final class GameEngineTests: XCTestCase {
     let state = GameState()
     XCTAssertEqual(state.drawTimeLimitSeconds, 60)
     XCTAssertEqual(state.guessTimeLimitSeconds, 30)
+    XCTAssertEqual(state.maxRounds, GameRoundDefaults.maxRounds)
   }
 
   func testUpdateSettingsClampsAndAppliesInLobby() {
@@ -95,18 +144,22 @@ final class GameEngineTests: XCTestCase {
     state = GameEngine.updateSettings(
       drawTimeLimitSeconds: 90,
       guessTimeLimitSeconds: 45,
+      maxRounds: 6,
       in: state
     )
     XCTAssertEqual(state.drawTimeLimitSeconds, 90)
     XCTAssertEqual(state.guessTimeLimitSeconds, 45)
+    XCTAssertEqual(state.maxRounds, 6)
 
     state = GameEngine.updateSettings(
       drawTimeLimitSeconds: 1,
       guessTimeLimitSeconds: 999,
+      maxRounds: 99,
       in: state
     )
     XCTAssertEqual(state.drawTimeLimitSeconds, GameTimerDefaults.minSeconds)
     XCTAssertEqual(state.guessTimeLimitSeconds, GameTimerDefaults.maxSeconds)
+    XCTAssertEqual(state.maxRounds, GameRoundDefaults.absoluteMaxRounds)
   }
 
   func testUpdateSettingsIgnoredDuringRound() {
@@ -115,10 +168,39 @@ final class GameEngineTests: XCTestCase {
     let next = GameEngine.updateSettings(
       drawTimeLimitSeconds: 120,
       guessTimeLimitSeconds: 20,
+      maxRounds: 4,
       in: state
     )
     XCTAssertEqual(next.drawTimeLimitSeconds, 60)
     XCTAssertEqual(next.guessTimeLimitSeconds, 30)
+    XCTAssertEqual(next.maxRounds, GameRoundDefaults.maxRounds)
+  }
+
+  func testMaxRoundsCapsBeforePlayerCount() {
+    var state = makeLobby(players: 4)
+    state = GameEngine.updateSettings(
+      drawTimeLimitSeconds: 60,
+      guessTimeLimitSeconds: 30,
+      maxRounds: 2,
+      in: state
+    )
+    state = GameEngine.startRound(category: "Animals", in: state)
+    XCTAssertFalse(state.isRoundComplete)
+
+    state.turnIndex = 2
+    XCTAssertTrue(state.isRoundComplete)
+  }
+
+  func testMaxRoundsDoesNotExceedPlayerCount() {
+    var state = makeLobby(players: 3)
+    state = GameEngine.updateSettings(
+      drawTimeLimitSeconds: 60,
+      guessTimeLimitSeconds: 30,
+      maxRounds: 8,
+      in: state
+    )
+    state.turnIndex = 3
+    XCTAssertTrue(state.isRoundComplete)
   }
 
   func testStartRoundSetsDrawingDeadline() {
@@ -162,6 +244,7 @@ final class GameEngineTests: XCTestCase {
     state = GameEngine.updateSettings(
       drawTimeLimitSeconds: 75,
       guessTimeLimitSeconds: 25,
+      maxRounds: 5,
       in: state
     )
     state = GameEngine.startRound(category: "Sports", in: state)
@@ -170,5 +253,6 @@ final class GameEngineTests: XCTestCase {
     XCTAssertNil(state.phaseEndsAt)
     XCTAssertEqual(state.drawTimeLimitSeconds, 75)
     XCTAssertEqual(state.guessTimeLimitSeconds, 25)
+    XCTAssertEqual(state.maxRounds, 5)
   }
 }

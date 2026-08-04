@@ -70,10 +70,10 @@ enum DrawingTool: String, Codable, CaseIterable, Equatable {
 
   var defaultWidth: Double {
     switch self {
-    case .pencil: return 10
-    case .pen: return 12
-    case .highlighter: return 34
-    case .eraser: return 36
+    case .pencil: return 8
+    case .pen: return 10
+    case .highlighter: return 24
+    case .eraser: return 24
     }
   }
 
@@ -181,6 +181,12 @@ enum GameTimerDefaults {
   static let maxSeconds = 300
 }
 
+enum GameRoundDefaults {
+  static let maxRounds = 8
+  static let minRounds = 2
+  static let absoluteMaxRounds = 16
+}
+
 struct GameState: Codable, Equatable {
   var phase: GamePhase = .lobby
   var players: [Player] = []
@@ -188,16 +194,21 @@ struct GameState: Codable, Equatable {
   var category: String = ""
   /// Pads indexed by starting player id.
   var pads: [SketchPad] = []
-  /// How many simultaneous turns have completed (0..<playerCount).
+  /// How many simultaneous turns have completed (0..<effectiveRoundCount).
   var turnIndex: Int = 0
   /// playerId → submitted for current turn
   var submittedPlayerIds: Set<String> = []
   /// Which pad is currently being shown in reveal (by starter id).
   var revealPadIndex: Int = 0
+  /// How many contribution steps (drawings/guesses) are visible on the current pad.
+  /// Category/prompt is shown as context; contributions append one at a time.
+  var revealStepIndex: Int = 0
   /// Seconds allowed for each drawing turn.
   var drawTimeLimitSeconds: Int = GameTimerDefaults.drawSeconds
   /// Seconds allowed for each guessing turn.
   var guessTimeLimitSeconds: Int = GameTimerDefaults.guessSeconds
+  /// How many simultaneous turns run before reveal (host-settable in lobby).
+  var maxRounds: Int = GameRoundDefaults.maxRounds
   /// Host-authored deadline for the current drawing/guessing turn.
   var phaseEndsAt: Date?
 
@@ -210,8 +221,10 @@ struct GameState: Codable, Equatable {
     turnIndex: Int = 0,
     submittedPlayerIds: Set<String> = [],
     revealPadIndex: Int = 0,
+    revealStepIndex: Int = 0,
     drawTimeLimitSeconds: Int = GameTimerDefaults.drawSeconds,
     guessTimeLimitSeconds: Int = GameTimerDefaults.guessSeconds,
+    maxRounds: Int = GameRoundDefaults.maxRounds,
     phaseEndsAt: Date? = nil
   ) {
     self.phase = phase
@@ -222,8 +235,10 @@ struct GameState: Codable, Equatable {
     self.turnIndex = turnIndex
     self.submittedPlayerIds = submittedPlayerIds
     self.revealPadIndex = revealPadIndex
+    self.revealStepIndex = revealStepIndex
     self.drawTimeLimitSeconds = drawTimeLimitSeconds
     self.guessTimeLimitSeconds = guessTimeLimitSeconds
+    self.maxRounds = maxRounds
     self.phaseEndsAt = phaseEndsAt
   }
 
@@ -237,10 +252,13 @@ struct GameState: Codable, Equatable {
     turnIndex = try container.decode(Int.self, forKey: .turnIndex)
     submittedPlayerIds = try container.decode(Set<String>.self, forKey: .submittedPlayerIds)
     revealPadIndex = try container.decode(Int.self, forKey: .revealPadIndex)
+    revealStepIndex = try container.decodeIfPresent(Int.self, forKey: .revealStepIndex) ?? 0
     drawTimeLimitSeconds = try container.decodeIfPresent(Int.self, forKey: .drawTimeLimitSeconds)
       ?? GameTimerDefaults.drawSeconds
     guessTimeLimitSeconds = try container.decodeIfPresent(Int.self, forKey: .guessTimeLimitSeconds)
       ?? GameTimerDefaults.guessSeconds
+    maxRounds = try container.decodeIfPresent(Int.self, forKey: .maxRounds)
+      ?? GameRoundDefaults.maxRounds
     phaseEndsAt = try container.decodeIfPresent(Date.self, forKey: .phaseEndsAt)
   }
 
@@ -266,10 +284,31 @@ struct GameState: Codable, Equatable {
   }
 
   var isRoundComplete: Bool {
-    !players.isEmpty && turnIndex >= players.count
+    !players.isEmpty && turnIndex >= min(maxRounds, players.count)
   }
 
   var currentTurnTimeLimitSeconds: Int {
     isDrawTurn ? drawTimeLimitSeconds : guessTimeLimitSeconds
+  }
+
+  /// Drawing/guess steps on the pad currently being revealed (excludes the category prompt).
+  var currentRevealContributions: [ChainStep] {
+    guard pads.indices.contains(revealPadIndex) else { return [] }
+    return pads[revealPadIndex].steps.filter {
+      if case .prompt = $0 { return false }
+      return true
+    }
+  }
+
+  /// Contribution steps visible so far on the current reveal pad.
+  var visibleRevealContributions: [ChainStep] {
+    Array(currentRevealContributions.prefix(max(0, revealStepIndex)))
+  }
+
+  /// True when the current pad's last contribution is showing and this is the last pad.
+  var isRevealFinished: Bool {
+    guard pads.indices.contains(revealPadIndex) else { return true }
+    return revealPadIndex + 1 >= pads.count
+      && revealStepIndex >= currentRevealContributions.count
   }
 }

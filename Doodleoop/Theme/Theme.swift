@@ -273,19 +273,31 @@ enum Theme {
       }
     }
 
+    /// Extra spacing for pre–iOS 26 `.lineSpacing` (adds on top of `uiFont.lineHeight`).
+    /// Zero when the Figma line height is at or below the font's natural metrics.
     var lineSpacing: CGFloat {
-      max(0, lineHeight - fontSize)
+      max(0, lineHeight - uiFont.lineHeight)
     }
   }
 }
 
 extension View {
+  @ViewBuilder
   func themeText(_ style: Theme.TextStyle) -> some View {
-    self
-      .font(style.font)
-      .tracking(style.tracking)
-      .lineSpacing(style.lineSpacing)
-      .textCase(style.textCase)
+    if #available(iOS 26.0, *) {
+      // Baseline-to-baseline — matches Figma absolute line height (e.g. display 44/48).
+      self
+        .font(style.font)
+        .tracking(style.tracking)
+        .lineHeight(.exact(points: style.lineHeight))
+        .textCase(style.textCase)
+    } else {
+      self
+        .font(style.font)
+        .tracking(style.tracking)
+        .lineSpacing(style.lineSpacing)
+        .textCase(style.textCase)
+    }
   }
 }
 

@@ -19,6 +19,8 @@ final class GameSession: ObservableObject {
   let devicePlayerId: String
   @Published private(set) var localPlayerId: String
 
+  let historyStore: GameHistoryStore
+
   private var transport: MultipeerTransport?
   private var peerDeviceIds: [String: String] = [:]
   private var cancellables = Set<AnyCancellable>()
@@ -40,7 +42,8 @@ final class GameSession: ObservableObject {
     state?.players.filter { $0.deviceId == devicePlayerId } ?? []
   }
 
-  init() {
+  init(historyStore: GameHistoryStore = GameHistoryStore()) {
+    self.historyStore = historyStore
     let defaults = UserDefaults.standard
     let name = defaults.string(forKey: "displayName") ?? "Player"
     localDisplayName = name
@@ -117,11 +120,12 @@ final class GameSession: ObservableObject {
     }
   }
 
-  func updateGameSettings(drawSeconds: Int, guessSeconds: Int) {
+  func updateGameSettings(drawSeconds: Int, guessSeconds: Int, maxRounds: Int? = nil) {
     guard isHost, var current = state else { return }
     current = GameEngine.updateSettings(
       drawTimeLimitSeconds: drawSeconds,
       guessTimeLimitSeconds: guessSeconds,
+      maxRounds: maxRounds,
       in: current
     )
     sync(current)
@@ -185,6 +189,14 @@ final class GameSession: ObservableObject {
     } else {
       send(.removePlayer(playerId: playerId))
     }
+  }
+
+  /// Host removes any non-host seat from the lobby.
+  func removeLobbyPlayer(_ playerId: String) {
+    guard isHost, var current = state, current.phase == .lobby else { return }
+    guard playerId != current.hostId else { return }
+    current = GameEngine.removePlayer(id: playerId, from: current)
+    sync(current)
   }
 
   func startRound() {
@@ -357,8 +369,13 @@ final class GameSession: ObservableObject {
   }
 
   private func sync(_ newState: GameState) {
-    state = newState
+    applyState(newState)
     send(.syncState(newState))
+  }
+
+  private func applyState(_ newState: GameState) {
+    state = newState
+    historyStore.saveIfNeeded(from: newState)
     schedulePhaseTimer()
   }
 
@@ -458,7 +475,7 @@ extension GameSession: MultipeerTransportDelegate {
       handleHost(message, fromPeerNamed: peerName)
     case .joiner:
       if case .syncState(let gameState) = message {
-        state = gameState
+        applyState(gameState)
         prepareLocalHandoffIfNeeded()
       }
     case .idle:

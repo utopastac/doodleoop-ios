@@ -4,6 +4,7 @@ struct GameSettingsView: View {
   @EnvironmentObject private var session: GameSession
   @State private var drawSeconds: Double = Double(GameTimerDefaults.drawSeconds)
   @State private var guessSeconds: Double = Double(GameTimerDefaults.guessSeconds)
+  @State private var maxRounds: Double = Double(GameRoundDefaults.maxRounds)
   @State private var isReady = false
 
   private var state: GameState { session.state ?? GameState() }
@@ -50,13 +51,33 @@ struct GameSettingsView: View {
             .tint(Theme.Accent.hover)
           }
         }
+
+        VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
+          HStack {
+            Text("Max rounds")
+              .themeText(.label)
+              .foregroundStyle(Theme.Text.primary)
+            Spacer()
+            Text("\(Int(maxRounds))")
+              .themeText(.bodyStrong)
+              .foregroundStyle(Theme.Text.primary)
+          }
+          if session.isHost {
+            Slider(
+              value: $maxRounds,
+              in: Double(GameRoundDefaults.minRounds)...Double(GameRoundDefaults.absoluteMaxRounds),
+              step: 1
+            )
+            .tint(Theme.Ink.deep)
+          }
+        }
       } header: {
         Text("Turn timers")
           .themeText(.overline)
       } footer: {
         Text(
           session.isHost
-            ? "Defaults are 60s to draw and 30s to guess. Changes apply to the next turns in this lobby."
+            ? "Defaults are 60s to draw, 30s to guess, and 8 rounds (capped by player count). Changes apply in this lobby."
             : "Only the host can change these."
         )
         .themeText(.caption)
@@ -70,15 +91,20 @@ struct GameSettingsView: View {
     .onAppear {
       drawSeconds = Double(state.drawTimeLimitSeconds)
       guessSeconds = Double(state.guessTimeLimitSeconds)
+      maxRounds = Double(state.maxRounds)
       isReady = true
     }
     .onChange(of: drawSeconds) { _, newValue in
       guard isReady else { return }
-      pushSettings(draw: Int(newValue), guess: Int(guessSeconds))
+      pushSettings(draw: Int(newValue), guess: Int(guessSeconds), rounds: Int(maxRounds))
     }
     .onChange(of: guessSeconds) { _, newValue in
       guard isReady else { return }
-      pushSettings(draw: Int(drawSeconds), guess: Int(newValue))
+      pushSettings(draw: Int(drawSeconds), guess: Int(newValue), rounds: Int(maxRounds))
+    }
+    .onChange(of: maxRounds) { _, newValue in
+      guard isReady else { return }
+      pushSettings(draw: Int(drawSeconds), guess: Int(guessSeconds), rounds: Int(newValue))
     }
     .onChange(of: state.drawTimeLimitSeconds) { _, newValue in
       let value = Double(newValue)
@@ -88,12 +114,18 @@ struct GameSettingsView: View {
       let value = Double(newValue)
       if Int(guessSeconds) != newValue { guessSeconds = value }
     }
+    .onChange(of: state.maxRounds) { _, newValue in
+      let value = Double(newValue)
+      if Int(maxRounds) != newValue { maxRounds = value }
+    }
   }
 
-  private func pushSettings(draw: Int, guess: Int) {
+  private func pushSettings(draw: Int, guess: Int, rounds: Int) {
     guard session.isHost else { return }
-    guard draw != state.drawTimeLimitSeconds || guess != state.guessTimeLimitSeconds else { return }
-    session.updateGameSettings(drawSeconds: draw, guessSeconds: guess)
+    guard draw != state.drawTimeLimitSeconds
+      || guess != state.guessTimeLimitSeconds
+      || rounds != state.maxRounds else { return }
+    session.updateGameSettings(drawSeconds: draw, guessSeconds: guess, maxRounds: rounds)
   }
 }
 

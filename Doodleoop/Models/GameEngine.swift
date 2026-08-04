@@ -51,16 +51,20 @@ enum GameEngine {
     return next
   }
 
-  /// Host-only lobby settings for turn timers.
+  /// Host-only lobby settings for turn timers and round length.
   static func updateSettings(
     drawTimeLimitSeconds: Int,
     guessTimeLimitSeconds: Int,
+    maxRounds: Int? = nil,
     in state: GameState
   ) -> GameState {
     var next = state
     guard next.phase == .lobby || next.phase == .roundOver else { return state }
     next.drawTimeLimitSeconds = clampTimeLimit(drawTimeLimitSeconds)
     next.guessTimeLimitSeconds = clampTimeLimit(guessTimeLimitSeconds)
+    if let maxRounds {
+      next.maxRounds = clampMaxRounds(maxRounds)
+    }
     return next
   }
 
@@ -75,6 +79,7 @@ enum GameEngine {
     next.turnIndex = 0
     next.submittedPlayerIds = []
     next.revealPadIndex = 0
+    next.revealStepIndex = 0
     next.pads = next.players.map { player in
       SketchPad(id: player.id, steps: [.prompt(trimmed)])
     }
@@ -145,13 +150,19 @@ enum GameEngine {
     return advanceIfReady(next, now: now)
   }
 
+  /// Reveals the next contribution on the current pad, then moves to the next pad,
+  /// then ends the round. Synced to every device via `syncState`.
   static func advanceReveal(in state: GameState) -> GameState {
     var next = state
     guard next.phase == .reveal else { return state }
-    if next.revealPadIndex + 1 >= next.pads.count {
-      next.phase = .roundOver
-    } else {
+    let contributions = next.currentRevealContributions
+    if next.revealStepIndex < contributions.count {
+      next.revealStepIndex += 1
+    } else if next.revealPadIndex + 1 < next.pads.count {
       next.revealPadIndex += 1
+      next.revealStepIndex = min(1, next.currentRevealContributions.count)
+    } else {
+      next.phase = .roundOver
     }
     return next
   }
@@ -164,6 +175,7 @@ enum GameEngine {
     next.turnIndex = 0
     next.submittedPlayerIds = []
     next.revealPadIndex = 0
+    next.revealStepIndex = 0
     next.phaseEndsAt = nil
     return next
   }
@@ -178,6 +190,8 @@ enum GameEngine {
     if next.isRoundComplete {
       next.phase = .reveal
       next.revealPadIndex = 0
+      // Start with the first drawing already visible on pad 0.
+      next.revealStepIndex = min(1, next.currentRevealContributions.count)
       next.phaseEndsAt = nil
       return next
     }
@@ -189,5 +203,9 @@ enum GameEngine {
 
   private static func clampTimeLimit(_ seconds: Int) -> Int {
     min(max(seconds, GameTimerDefaults.minSeconds), GameTimerDefaults.maxSeconds)
+  }
+
+  private static func clampMaxRounds(_ rounds: Int) -> Int {
+    min(max(rounds, GameRoundDefaults.minRounds), GameRoundDefaults.absoluteMaxRounds)
   }
 }

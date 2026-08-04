@@ -6,6 +6,7 @@ struct HomeView: View {
   @State private var isEditingAvatar = false
   @State private var showRules = false
   @State private var showSettings = false
+  @State private var showHistory = false
   @State private var showViewPreviews = false
   @State private var pendingPreview: ViewPreview?
 
@@ -41,6 +42,9 @@ struct HomeView: View {
       }
       .sheet(isPresented: $showSettings) {
         AppSettingsView()
+      }
+      .sheet(isPresented: $showHistory) {
+        GameHistoryView()
       }
       .sheet(isPresented: $showViewPreviews, onDismiss: {
         if let pendingPreview {
@@ -135,13 +139,19 @@ struct HomeView: View {
 
         Spacer(minLength: Theme.Spacing.s5)
 
-        // Rules + settings — centered row matching Figma
+        // Rules + history + settings
         HStack(spacing: Theme.Spacing.s2) {
           Button(DoodleLabel.bracketed("The rules")) {
             showRules = true
           }
           .doodleButton(.tertiary)
-          .frame(width: 153)
+          .frame(width: 128)
+
+          Button(DoodleLabel.bracketed("History")) {
+            showHistory = true
+          }
+          .doodleButton(.tertiary)
+          .frame(width: 120)
 
           Button {
             showSettings = true

@@ -14,6 +14,7 @@ enum PhosphorIcon: String {
   case undo = "IconUndo"
   case trash = "IconTrash"
   case x = "IconX"
+  case signOut = "IconSignOut"
 
   var image: Image { Image(rawValue) }
 }

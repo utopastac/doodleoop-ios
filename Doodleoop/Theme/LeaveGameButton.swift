@@ -1,21 +1,24 @@
 import SwiftUI
 
-/// Ink square close control — confirms, then calls `GameSession.leaveGame()`.
+/// Ink square leave control — confirms, then calls `GameSession.leaveGame()`.
 struct LeaveGameButton: View {
   @EnvironmentObject private var session: GameSession
   @State private var showConfirm = false
+
+  /// Figma primary icon button — 40×40 with 20pt glyph.
+  var size: CGFloat = Theme.Spacing.s8
 
   var body: some View {
     Button {
       showConfirm = true
     } label: {
-      PhosphorIcon.x.image
+      PhosphorIcon.signOut.image
         .resizable()
         .renderingMode(.template)
         .scaledToFit()
         .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
         .foregroundStyle(Theme.Paper.tan)
-        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+        .frame(width: size, height: size)
         .background(Theme.Ink.deep)
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
     }
@@ -40,20 +43,25 @@ struct LeaveGameButton: View {
   }
 }
 
-/// Pins a leave control to the top-trailing corner of in-game screens.
+/// Pins a leave control to the top-trailing corner of in-game screens
+/// (drawing / guessing / reveal). Lobby owns its own leave toolbar band.
 struct LeaveGameChrome: ViewModifier {
+  var isEnabled: Bool = true
+
   func body(content: Content) -> some View {
     content.overlay(alignment: .topTrailing) {
-      LeaveGameButton()
-        .padding(.top, Theme.Spacing.s3)
-        .padding(.trailing, Theme.Layout.pageMargin)
+      if isEnabled {
+        LeaveGameButton()
+          .padding(.top, Theme.Spacing.s3)
+          .padding(.trailing, Theme.Layout.pageMargin)
+      }
     }
   }
 }
 
 extension View {
-  /// Always-on leave control for lobby / round / reveal screens.
-  func leaveGameChrome() -> some View {
-    modifier(LeaveGameChrome())
+  /// Always-on leave control for round / reveal screens.
+  func leaveGameChrome(isEnabled: Bool = true) -> some View {
+    modifier(LeaveGameChrome(isEnabled: isEnabled))
   }
 }

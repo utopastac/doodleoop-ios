@@ -20,7 +20,7 @@ A pictorial Chinese whispers / Telestrations-style party game. One shared catego
 
 After everyone submits — or the turn timer expires — each pad moves one seat to the left.
 
-The round ends when `turnIndex == playerCount` (each pad has one contribution from each seat). Host advances through pad reveals, then returns to lobby for another category.
+The round ends when `turnIndex == playerCount` (each pad has one contribution from each seat). Reveal walks each pad’s journey one step at a time (drawing → guess → …), synced on every phone; after a pad finishes, the next player’s pad starts. Then return to lobby for another category.
 
 ## Win condition
 

@@ -11,7 +11,8 @@ struct ContentView: View {
           HomeView()
         case .host, .joiner:
           gameFlow
-            .leaveGameChrome()
+            // Lobby lays out leave in its own toolbar band; other phases overlay.
+            .leaveGameChrome(isEnabled: !isLobbyPhase)
         }
       }
 
@@ -20,6 +21,10 @@ struct ContentView: View {
       }
     }
     .environment(\.font, Theme.TextStyle.label.font)
+  }
+
+  private var isLobbyPhase: Bool {
+    session.state?.phase == .lobby || (session.role == .joiner && session.state == nil)
   }
 
   @ViewBuilder

@@ -7,6 +7,8 @@ struct RevealView: View {
     let state = session.state
     let pad = state.flatMap { $0.pads.indices.contains($0.revealPadIndex) ? $0.pads[$0.revealPadIndex] : nil }
     let starter = pad.flatMap { state?.player(id: $0.id) }
+    let visible = state?.visibleRevealContributions ?? []
+    let finished = state?.isRevealFinished == true
 
     VStack(spacing: Theme.Spacing.s4) {
       Text("Reveal")
@@ -15,54 +17,72 @@ struct RevealView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.trailing, Theme.Sizing.leaveButtonReserve)
         .pageHorizontalPadding()
+
       if let starter {
-        Text("Started by \(starter.name)")
+        Text("\(starter.name)'s pad")
           .themeText(.label)
           .foregroundStyle(Theme.Text.secondary)
           .pageHorizontalPadding()
       }
 
-      ScrollView {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
-          if let pad {
-            ForEach(Array(pad.steps.enumerated()), id: \.offset) { _, step in
-              switch step {
-              case .prompt(let text):
-                labeled("Category", text)
-              case .drawing(let playerId, let drawing):
-                VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
-                  Text(state?.player(id: playerId)?.name ?? "Player")
-                    .themeText(.bodyStrong)
-                    .foregroundStyle(Theme.Text.primary)
-                  ReadOnlyDrawingView(drawing: drawing)
-                    .frame(height: 220)
-                }
-              case .guess(let playerId, let text):
-                labeled(state?.player(id: playerId)?.name ?? "Player", text)
-              }
-            }
-          }
-        }
-        .pageHorizontalPadding()
+      if let category = state?.category, !category.isEmpty {
+        labeled("Category", category)
+          .pageHorizontalPadding()
       }
 
-      if session.isHost {
-        Button(DoodleLabel.bracketed(state.map { $0.revealPadIndex + 1 >= $0.pads.count } == true ? "Finish" : "Next pad")) {
-          session.advanceReveal()
+      ScrollViewReader { proxy in
+        ScrollView {
+          VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
+            ForEach(Array(visible.enumerated()), id: \.offset) { index, step in
+              stepView(step, state: state)
+                .id(index)
+            }
+          }
+          .pageHorizontalPadding()
+          .padding(.bottom, Theme.Spacing.s4)
         }
-        .doodleButton(.primary)
-        .pageHorizontalPadding()
-        .padding(.bottom, Theme.Spacing.s3)
-      } else {
-        Text("Host is revealing…")
-          .themeText(.label)
-          .foregroundStyle(Theme.Text.secondary)
-          .padding(.bottom, Theme.Spacing.s3)
+        .onChange(of: visible.count) { _, count in
+          guard count > 0 else { return }
+          withAnimation(.easeOut(duration: 0.25)) {
+            proxy.scrollTo(count - 1, anchor: .bottom)
+          }
+        }
+        .onChange(of: state?.revealPadIndex) { _, _ in
+          guard !visible.isEmpty else { return }
+          withAnimation(.easeOut(duration: 0.25)) {
+            proxy.scrollTo(0, anchor: .top)
+          }
+        }
       }
+
+      Button(DoodleLabel.bracketed(finished ? "Finish" : "Next")) {
+        session.advanceReveal()
+      }
+      .doodleButton(.primary)
+      .pageHorizontalPadding()
+      .padding(.bottom, Theme.Spacing.s3)
     }
     .padding(.top, Theme.Spacing.s5)
     .paperBackground()
     .pageMargins()
+  }
+
+  @ViewBuilder
+  private func stepView(_ step: ChainStep, state: GameState?) -> some View {
+    switch step {
+    case .prompt(let text):
+      labeled("Category", text)
+    case .drawing(let playerId, let drawing):
+      VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
+        Text(state?.player(id: playerId)?.name ?? "Player")
+          .themeText(.bodyStrong)
+          .foregroundStyle(Theme.Text.primary)
+        ReadOnlyDrawingView(drawing: drawing)
+          .aspectRatio(1, contentMode: .fit)
+      }
+    case .guess(let playerId, let text):
+      labeled(state?.player(id: playerId)?.name ?? "Player", text)
+    }
   }
 
   private func labeled(_ title: String, _ body: String) -> some View {
@@ -86,6 +106,11 @@ struct RoundOverView: View {
       Text("Loop complete")
         .themeText(.heading)
         .foregroundStyle(Theme.Text.primary)
+      Text("Every drawing book was saved to History on this phone.")
+        .themeText(.label)
+        .multilineTextAlignment(.center)
+        .foregroundStyle(Theme.Text.secondary)
+        .pageHorizontalPadding()
       Text("Ready for another category?")
         .themeText(.label)
         .foregroundStyle(Theme.Text.secondary)

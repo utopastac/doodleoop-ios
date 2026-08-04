@@ -61,7 +61,7 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     case .drawing: return "First turn — draw the shared category"
     case .drawingFromGuess: return "Later turn — draw someone else's guess"
     case .guessing: return "What is this a drawing of?"
-    case .reveal: return "Walk through a finished pad chain"
+    case .reveal: return "Reveal each pad one step at a time"
     case .roundOver: return "Loop complete celebration"
     case .handoffOverlay: return "Full-screen seat handoff gate"
     case .avatarSetup: return "First-run doodle avatar"
