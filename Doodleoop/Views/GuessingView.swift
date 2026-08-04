@@ -3,8 +3,6 @@ import SwiftUI
 struct GuessingView: View {
   @EnvironmentObject private var session: GameSession
   @State private var guess = ""
-  /// Width ÷ height from the tallest layout seen (keyboard dismissed).
-  @State private var drawingAspect: CGFloat?
 
   var body: some View {
     let drawing: Drawing? = {
@@ -33,15 +31,10 @@ struct GuessingView: View {
 
       if let drawing {
         GeometryReader { geo in
-          let aspect = drawingAspect ?? (geo.size.width / max(geo.size.height, 1))
-          let width = min(geo.size.width, geo.size.height * aspect)
-          let height = width / aspect
-
+          let side = min(geo.size.width, geo.size.height)
           ReadOnlyDrawingView(drawing: drawing)
-            .frame(width: width, height: height)
+            .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .onAppear { considerDrawingAspect(geo.size) }
-            .onChange(of: geo.size) { _, size in considerDrawingAspect(size) }
         }
         .pageHorizontalPadding()
       } else {
@@ -73,19 +66,6 @@ struct GuessingView: View {
     .pageMargins()
     .task(id: state?.phaseEndsAt) {
       await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
-    }
-  }
-
-  /// Prefer the roomiest (tallest) proposal so the keyboard shrinks the sheet uniformly.
-  private func considerDrawingAspect(_ size: CGSize) {
-    guard size.width > 1, size.height > 1 else { return }
-    let aspect = size.width / size.height
-    if let drawingAspect {
-      if aspect < drawingAspect {
-        self.drawingAspect = aspect
-      }
-    } else {
-      drawingAspect = aspect
     }
   }
 
