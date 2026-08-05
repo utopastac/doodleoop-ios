@@ -13,7 +13,7 @@ enum RevealStyle: String, CaseIterable, Identifiable {
 
   var displayName: String {
     switch self {
-    case .fade: "Fade in"
+    case .fade: "Fade"
     case .strokes: "Draw"
     }
   }

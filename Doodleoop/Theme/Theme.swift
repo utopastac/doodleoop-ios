@@ -109,6 +109,8 @@ enum Theme {
     /// Horizontal inset from screen edge to content and margin rails.
     /// Always 24pt — match Figma page chrome; use for padding and content width.
     static let pageMargin = Spacing.s6
+    /// Minimum gap above a header bar so it clears a sheet's rounded top edge.
+    static let sheetHeaderInset = Spacing.s6
   }
 
   enum Sizing {

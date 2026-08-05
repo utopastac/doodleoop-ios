@@ -29,10 +29,10 @@ enum PaperStyle: String, CaseIterable, Identifiable, Equatable {
     switch self {
     case .plain: "Plain"
     case .dots: "Dots"
-    case .crosses: "Crosses"
+    case .crosses: "Plus"
     case .ruled: "Rules"
     case .parchment: "Parchment"
-    case .textured: "Textured"
+    case .textured: "Texture"
     case .canvas: "Canvas"
     }
   }
@@ -496,6 +496,12 @@ extension View {
   /// Horizontal content inset matching the page margin rails.
   func pageHorizontalPadding() -> some View {
     padding(.horizontal, Theme.Layout.pageMargin)
+  }
+
+  /// Top inset for a header bar so it clears a sheet's rounded top edge.
+  /// Every sheet with its own header bar needs this.
+  func sheetHeaderInset() -> some View {
+    padding(.top, Theme.Layout.sheetHeaderInset)
   }
 
   /// Surround this group with horizontal grid lines at its top and bottom.

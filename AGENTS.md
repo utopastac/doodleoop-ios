@@ -45,6 +45,11 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 - Confirm with the dialog in `LeaveGameButton` before calling `session.leaveGame()`.
 - Top-row content that sits on the trailing edge (drawing / guessing / reveal) should pad with `Theme.Sizing.leaveButtonReserve` so it doesn’t collide with the chrome.
 
+## Sheets
+
+- A sheet that draws its **own header bar** (title + `[ DONE ]` band, as on Settings) must inset it with `.sheetHeaderInset()` — at least 24pt, so the bar and its grid rail clear the sheet's rounded top edge.
+- Sheets that use a system `NavigationStack` toolbar instead don't need it; the nav bar insets itself.
+
 ## Drawing canvas
 
 - The in-game drawing surface stays a **square** (`aspectRatio(1)`). Do not stretch it to fill arbitrary aspect ratios.

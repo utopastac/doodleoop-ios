@@ -5,6 +5,9 @@ struct AppSettingsView: View {
   @AppStorage(PaperStyle.storageKey) private var paperStyleRaw = PaperStyle.plain.rawValue
   @AppStorage(RevealStyle.storageKey) private var revealStyleRaw = RevealStyle.fade.rawValue
 
+  /// Figma `paper style` swatch — capsule sheet over its label.
+  private let swatchSize = CGSize(width: 88, height: 140)
+
   private var selectedStyle: PaperStyle {
     PaperStyle(rawValue: paperStyleRaw) ?? .plain
   }
@@ -16,58 +19,98 @@ struct AppSettingsView: View {
     )
   }
 
-  private let columns = [
-    GridItem(.flexible(), spacing: Theme.Spacing.s3),
-    GridItem(.flexible(), spacing: Theme.Spacing.s3),
-  ]
-
   var body: some View {
-    NavigationStack {
+    VStack(spacing: 0) {
+      header
+        .gridBand()
+        .sheetHeaderInset()
+
       ScrollView {
-        VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
-          Text("Paper")
-            .themeText(.overline)
-            .foregroundStyle(Theme.Text.secondary)
-
-          Text("Used for drawing canvases and sheets — like the home avatar circle.")
-            .themeText(.caption)
-            .foregroundStyle(Theme.Text.tertiary)
-
-          LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
-            ForEach(PaperStyle.allCases) { style in
-              paperOption(style)
-            }
+        VStack(spacing: 0) {
+          section("Paper style") {
+            paperStyles
           }
 
-          Text("Reveal")
-            .themeText(.overline)
-            .foregroundStyle(Theme.Text.secondary)
-            .padding(.top, Theme.Spacing.s3)
+          GridLine(axis: .horizontal)
 
-          Text("How each drawing arrives during the reveal — finished, or replayed stroke by stroke.")
-            .themeText(.caption)
-            .foregroundStyle(Theme.Text.tertiary)
+          section("Reveal style") {
+            DoodleSegmentedControl(
+              options: RevealStyle.allCases,
+              selection: revealStyle,
+              title: \.displayName
+            )
+            .pageHorizontalPadding()
+          }
 
-          DoodleSegmentedControl(
-            options: RevealStyle.allCases,
-            selection: revealStyle,
-            title: \.displayName
-          )
+          GridLine(axis: .horizontal)
         }
-        .pageHorizontalPadding()
-        .padding(.top, Theme.Spacing.s4)
-        .padding(.bottom, Theme.Spacing.s7)
       }
-      .paperBackground()
-      .pageMargins()
-      .navigationTitle("Settings")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .confirmationAction) {
-          Button("Done") { dismiss() }
-            .themeText(.label)
-            .foregroundStyle(Theme.Accent.default)
+      .scrollBounceBehavior(.basedOnSize)
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .paperBackground()
+    .pageMargins()
+  }
+
+  /// Title + `[ DONE ]` in a 40pt band between horizontal rails (Figma).
+  private var header: some View {
+    HStack(spacing: Theme.Spacing.s2) {
+      Text("Settings")
+        .themeText(.body)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+
+      Button {
+        dismiss()
+      } label: {
+        Text(DoodleLabel.bracketed("Done"))
+          .themeText(.button)
+          .foregroundStyle(Theme.Paper.tan)
+          .padding(.horizontal, Theme.Spacing.s5)
+          .frame(height: Theme.Sizing.inputHeight)
+          .background(Theme.Ink.deep)
+          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+      }
+      .buttonStyle(.plain)
+    }
+    .pageHorizontalPadding()
+    .frame(height: Theme.Sizing.inputHeight)
+  }
+
+  private func section<Content: View>(
+    _ title: String,
+    @ViewBuilder content: () -> Content
+  ) -> some View {
+    VStack(alignment: .leading, spacing: Theme.Spacing.s4) {
+      Text(title)
+        .themeText(.body)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(height: Theme.Sizing.inputHeight, alignment: .leading)
+        .pageHorizontalPadding()
+        .accessibilityAddTraits(.isHeader)
+
+      content()
+    }
+    .padding(.top, Theme.Spacing.s6)
+    .padding(.bottom, Theme.Spacing.s4)
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+
+  /// The swatch row runs past the trailing rail, so it scrolls sideways.
+  private var paperStyles: some View {
+    ScrollViewReader { proxy in
+      ScrollView(.horizontal, showsIndicators: false) {
+        HStack(alignment: .top, spacing: Theme.Spacing.s4) {
+          ForEach(PaperStyle.allCases) { style in
+            paperOption(style)
+              .id(style)
+          }
         }
+      }
+      .contentMargins(.horizontal, Theme.Layout.pageMargin, for: .scrollContent)
+      .onAppear {
+        proxy.scrollTo(selectedStyle, anchor: .center)
       }
     }
   }
@@ -77,22 +120,26 @@ struct AppSettingsView: View {
     return Button {
       paperStyleRaw = style.rawValue
     } label: {
-      VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
+      VStack(spacing: Theme.Spacing.s2) {
         PaperFill(style: style)
-          .frame(maxWidth: .infinity)
-          .frame(height: 96)
-          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+          .frame(width: swatchSize.width, height: swatchSize.height)
+          .clipShape(Capsule(style: .continuous))
           .overlay {
-            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+            // Plain paper is the same cream as the page, so unselected swatches
+            // still need a hairline to read as a swatch.
+            Capsule(style: .continuous)
               .strokeBorder(
-                isSelected ? Theme.Stroke.emphasis : Theme.Stroke.subtle,
+                isSelected ? Theme.Ink.deep : Theme.Stroke.subtle,
                 lineWidth: isSelected ? Theme.Borders.heavy : Theme.Borders.thin
               )
           }
 
         Text(style.displayName)
+          .textCase(.uppercase)
           .themeText(.labelSmall)
-          .foregroundStyle(isSelected ? Theme.Text.primary : Theme.Text.secondary)
+          .foregroundStyle(Theme.Text.primary)
+          .tracking(Theme.FontSize.footnote * 0.07)
+          .frame(width: swatchSize.width)
       }
     }
     .buttonStyle(.plain)

@@ -295,7 +295,7 @@ struct AvatarSetupView: View {
         }
       }
       .pageHorizontalPadding()
-      .padding(.top, Theme.Spacing.s3)
+      .sheetHeaderInset()
 
       Spacer(minLength: Theme.Spacing.s2)
 
