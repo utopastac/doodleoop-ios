@@ -66,16 +66,24 @@ struct ZoomableDrawingView: View {
   private func publish(previous: Transform, current: Transform) {
     guard let layer else { return }
     if current.scale > 1 {
-      layer.peek = DrawingZoomLayer.Peek(
-        drawing: drawing,
-        progress: progress,
-        frame: frame.value,
-        scale: current.scale,
-        anchor: current.anchor,
-        offset: current.offset,
-        scalesStrokeWidth: scalesStrokeWidth,
-        showsPaper: showsPaper
-      )
+      // Update transform in place so each pinch frame doesn't re-copy the Drawing.
+      if layer.peek != nil {
+        layer.peek?.frame = frame.value
+        layer.peek?.scale = current.scale
+        layer.peek?.anchor = current.anchor
+        layer.peek?.offset = current.offset
+      } else {
+        layer.peek = DrawingZoomLayer.Peek(
+          drawing: drawing,
+          progress: progress,
+          frame: frame.value,
+          scale: current.scale,
+          anchor: current.anchor,
+          offset: current.offset,
+          scalesStrokeWidth: scalesStrokeWidth,
+          showsPaper: showsPaper
+        )
+      }
     } else if previous.scale > 1 {
       // The gesture is over: settle the floating copy the same way the inline one settles.
       withAnimation(Theme.Motion.reveal) {

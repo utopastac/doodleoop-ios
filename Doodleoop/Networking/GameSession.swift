@@ -1,23 +1,27 @@
 import Foundation
 import MultipeerConnectivity
 import Combine
+import Observation
 
 @MainActor
-final class GameSession: ObservableObject {
+@Observable
+final class GameSession {
   static let serviceType = "doodleoop-game"
   static let avatarDefaultsKey = "doodleoop.avatar"
 
-  @Published private(set) var state: GameState?
-  @Published private(set) var role: Role = .idle
-  @Published private(set) var discoveredPeers: [MCPeerID] = []
-  @Published private(set) var handoff: SeatHandoff?
+  private(set) var state: GameState?
+  /// Mirrored from `state` so shell views can track phase without observing every sync.
+  private(set) var phase: GamePhase?
+  private(set) var role: Role = .idle
+  private(set) var discoveredPeers: [MCPeerID] = []
+  private(set) var handoff: SeatHandoff?
 
-  @Published var localDisplayName: String
-  @Published private(set) var localAvatar: Drawing
-  @Published var draftCategory: String = ""
+  var localDisplayName: String
+  private(set) var localAvatar: Drawing
+  var draftCategory: String = ""
 
   let devicePlayerId: String
-  @Published private(set) var localPlayerId: String
+  private(set) var localPlayerId: String
 
   let historyStore: GameHistoryStore
 
@@ -81,6 +85,7 @@ final class GameSession: ObservableObject {
       to: lobby
     )
     state = lobby
+    phase = lobby.phase
     localPlayerId = devicePlayerId
 
     let transport = MultipeerTransport(displayName: localDisplayName, serviceType: Self.serviceType)
@@ -127,6 +132,9 @@ final class GameSession: ObservableObject {
     role = .idle
     if clearState {
       state = nil
+      phase = nil
+    } else {
+      phase = state?.phase
     }
   }
 
@@ -277,61 +285,71 @@ final class GameSession: ObservableObject {
     case .lobbyPassAndPlay:
       role = .host
       localPlayerId = devicePlayerId
-      state = previewLobby(playerCount: 4, sharedDevice: true)
+      replaceState(previewLobby(playerCount: 4, sharedDevice: true))
       draftCategory = "Breakfast foods"
     case .lobbyNearbyHost:
       role = .host
       localPlayerId = devicePlayerId
-      state = previewLobby(playerCount: 5, sharedDevice: false)
+      replaceState(previewLobby(playerCount: 5, sharedDevice: false))
       draftCategory = "Things with wings"
     case .lobbyNearbyJoiner:
       role = .joiner
       localPlayerId = devicePlayerId
-      state = nil
+      replaceState(nil)
     case .lobbyNearbyGameFound:
       role = .joiner
       localPlayerId = devicePlayerId
-      state = nil
+      replaceState(nil)
       discoveredPeers = [PreviewStateFactory.discoveredDemoPeer()]
     case .drawing:
       role = .host
       localPlayerId = devicePlayerId
-      state = PreviewStateFactory.drawingState(
-        devicePlayerId: devicePlayerId,
-        displayName: localDisplayName,
-        avatar: localAvatar
+      replaceState(
+        PreviewStateFactory.drawingState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
       )
     case .drawingFromGuess:
       role = .host
       localPlayerId = devicePlayerId
-      state = PreviewStateFactory.drawingFromGuessState(
-        devicePlayerId: devicePlayerId,
-        displayName: localDisplayName,
-        avatar: localAvatar
+      replaceState(
+        PreviewStateFactory.drawingFromGuessState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
       )
     case .guessing:
       role = .host
       localPlayerId = devicePlayerId
-      state = PreviewStateFactory.guessingState(
-        devicePlayerId: devicePlayerId,
-        displayName: localDisplayName,
-        avatar: localAvatar
+      replaceState(
+        PreviewStateFactory.guessingState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
       )
     case .reveal:
       role = .host
       localPlayerId = devicePlayerId
-      state = PreviewStateFactory.revealState(
-        devicePlayerId: devicePlayerId,
-        displayName: localDisplayName,
-        avatar: localAvatar
+      replaceState(
+        PreviewStateFactory.revealState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
       )
     case .roundOver:
       role = .host
       localPlayerId = devicePlayerId
-      state = PreviewStateFactory.roundOverState(
-        devicePlayerId: devicePlayerId,
-        displayName: localDisplayName,
-        avatar: localAvatar
+      replaceState(
+        PreviewStateFactory.roundOverState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
       )
     case .handoffOverlay:
       role = .host
@@ -345,7 +363,7 @@ final class GameSession: ObservableObject {
       )
       var next = PreviewStateFactory.makeLobby(players: players)
       next = GameEngine.startRound(category: "Breakfast foods", in: next)
-      state = next
+      replaceState(next)
       if let nextPlayer = players.dropFirst().first {
         localPlayerId = nextPlayer.id
         handoff = SeatHandoff(
@@ -368,6 +386,11 @@ final class GameSession: ObservableObject {
   }
 
   // MARK: - Internals
+
+  private func replaceState(_ newState: GameState?) {
+    state = newState
+    phase = newState?.phase
+  }
 
   private func bindPeers(_ transport: MultipeerTransport) {
     transport.$discoveredPeers
@@ -405,6 +428,9 @@ final class GameSession: ObservableObject {
       }
     }
     state = merged
+    if phase != merged.phase {
+      phase = merged.phase
+    }
     historyStore.saveIfNeeded(from: merged)
     schedulePhaseTimer()
   }
@@ -621,6 +647,7 @@ extension GameSession {
   ) {
     self.role = role
     self.state = state
+    self.phase = state?.phase
     self.peerDeviceIds = peerDeviceIds
     self.messageTransport = messageTransport
     if let localPlayerId {

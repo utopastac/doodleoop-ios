@@ -1,10 +1,11 @@
 import Foundation
-import Combine
+import Observation
 
 /// Local on-device archive of finished rounds (every phone saves its own copy).
 @MainActor
-final class GameHistoryStore: ObservableObject {
-  @Published private(set) var games: [SavedGame] = []
+@Observable
+final class GameHistoryStore {
+  private(set) var games: [SavedGame] = []
 
   private let directory: URL
   private let encoder: JSONEncoder

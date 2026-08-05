@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GuessingView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @State private var guess = ""
 
   var body: some View {

@@ -81,7 +81,7 @@ enum ViewPreview: String, CaseIterable, Identifiable {
 
 struct ViewPreviewMenuView: View {
   @Environment(\.dismiss) private var dismiss
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   var onSelectGamePreview: (ViewPreview) -> Void
 
   @State private var sheetPreview: ViewPreview?

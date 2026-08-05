@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct DrawingView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @State private var drawing = Drawing.empty
   @State private var undoStack = DrawingUndoStack()
   @State private var tool: DrawingTool = .pen

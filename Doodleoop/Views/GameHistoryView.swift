@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct GameHistoryView: View {
-  @EnvironmentObject private var history: GameHistoryStore
+  @Environment(GameHistoryStore.self) private var history
   @Environment(\.dismiss) private var dismiss
 
   private let thumbnailSize: CGFloat = Theme.Spacing.s12 + Theme.Spacing.s2 // 104

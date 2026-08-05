@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct HomeView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @Namespace private var avatarZoomNamespace
   @State private var nameDraft = ""
   @State private var isEditingAvatar = false

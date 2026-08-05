@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
 
   var body: some View {
     ZStack {
@@ -34,7 +34,7 @@ struct ContentView: View {
     case .idle:
       return "home"
     case .host, .joiner:
-      if let phase = session.state?.phase {
+      if let phase = session.phase {
         return "\(String(describing: session.role))-\(phase.rawValue)"
       }
       return session.role == .joiner ? "joiner-lobby" : "host-empty"
@@ -42,44 +42,46 @@ struct ContentView: View {
   }
 
   private var isLobbyPhase: Bool {
-    session.state?.phase == .lobby || (session.role == .joiner && session.state == nil)
+    // Prefer mirrored `phase` so pad syncs don't invalidate this shell.
+    session.phase == .lobby || (session.role == .joiner && session.phase == nil)
   }
 
   /// Lobby, reveal and round-over own a 40pt leave band; drawing / guessing use overlay chrome.
   private var usesInlineLeave: Bool {
     guard !isLobbyPhase else { return true }
-    return session.state?.phase == .reveal || session.state?.phase == .roundOver
+    return session.phase == .reveal || session.phase == .roundOver
   }
 
   @ViewBuilder
   private var gameFlow: some View {
     // Leave chrome sits outside the phase swap so it doesn't slide with the pad.
+    // Switch on mirrored `phase` so pad submits don't rebuild this shell.
     ZStack {
       Group {
-        if let state = session.state {
-          switch state.phase {
-          case .lobby:
-            LobbyView()
-              .transition(Self.crossfade)
-          case .drawing:
-            DrawingView()
-              .transition(Self.passLeft)
-          case .guessing:
-            GuessingView()
-              .transition(Self.passLeft)
-          case .reveal:
-            RevealView()
-              .transition(Self.crossfade)
-          case .roundOver:
-            RoundOverView()
-              .transition(Self.crossfade)
-          }
-        } else if session.role == .joiner {
+        switch session.phase {
+        case .lobby:
           LobbyView()
             .transition(Self.crossfade)
-        } else {
-          HomeView()
+        case .drawing:
+          DrawingView()
+            .transition(Self.passLeft)
+        case .guessing:
+          GuessingView()
+            .transition(Self.passLeft)
+        case .reveal:
+          RevealView()
             .transition(Self.crossfade)
+        case .roundOver:
+          RoundOverView()
+            .transition(Self.crossfade)
+        case nil:
+          if session.role == .joiner {
+            LobbyView()
+              .transition(Self.crossfade)
+          } else {
+            HomeView()
+              .transition(Self.crossfade)
+          }
         }
       }
     }
@@ -99,5 +101,5 @@ struct ContentView: View {
 
 #Preview {
   ContentView()
-    .environmentObject(GameSession())
+    .environment(GameSession())
 }

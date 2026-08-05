@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct LobbyView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @State private var extraName = ""
   @State private var showCategorySheet = false
 
@@ -51,6 +51,7 @@ struct LobbyView: View {
     .paperBackground()
     .pageMargins()
     .sheet(isPresented: $showCategorySheet) {
+      @Bindable var session = session
       CategoryPromptSheet(
         category: $session.draftCategory,
         onStart: {

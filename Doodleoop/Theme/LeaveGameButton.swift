@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Ink square leave control — confirms, then calls `GameSession.leaveGame()`.
 struct LeaveGameButton: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @State private var showConfirm = false
 
   /// Figma primary icon button — 40×40 with 20pt glyph.

@@ -20,7 +20,7 @@ enum RevealStyle: String, CaseIterable, Identifiable {
 }
 
 struct RevealView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @AppStorage(RevealStyle.storageKey) private var revealStyleRaw = RevealStyle.fade.rawValue
 
@@ -239,7 +239,7 @@ private struct RevealContributionLabel: ViewModifier {
 }
 
 struct RoundOverView: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
   @State private var showCategorySheet = false
 
   var body: some View {
@@ -265,6 +265,7 @@ struct RoundOverView: View {
     .paperBackground()
     .pageMargins()
     .sheet(isPresented: $showCategorySheet) {
+      @Bindable var session = session
       CategoryPromptSheet(
         category: $session.draftCategory,
         startTitle: "Start round",
@@ -430,7 +431,7 @@ private struct DoodleCollage: View {
 }
 
 struct HandoffOverlay: View {
-  @EnvironmentObject private var session: GameSession
+  @Environment(GameSession.self) private var session
 
   var body: some View {
     if let handoff = session.handoff,
