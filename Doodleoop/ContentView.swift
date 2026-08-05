@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
   @Environment(GameSession.self) private var session
+  @Environment(\.scenePhase) private var scenePhase
 
   var body: some View {
     ZStack {
@@ -26,6 +27,14 @@ struct ContentView: View {
     .animation(Theme.Motion.handoff, value: session.handoff != nil)
     .environment(\.font, Theme.TextStyle.label.font)
     .drawingZoomLayer()
+    .onChange(of: scenePhase) { _, phase in
+      switch phase {
+      case .active: session.handleLifecycle(.active)
+      case .inactive: session.handleLifecycle(.inactive)
+      case .background: session.handleLifecycle(.background)
+      @unknown default: break
+      }
+    }
     .alert(
       session.alert?.title ?? "",
       isPresented: alertPresented
@@ -36,12 +45,29 @@ struct ContentView: View {
     } message: {
       Text(session.alert?.message ?? "")
     }
+    .alert(
+      "Stay in Doodleoop",
+      isPresented: stayInAppTipPresented
+    ) {
+      Button("Got it", role: .cancel) {
+        session.clearStayInAppTip()
+      }
+    } message: {
+      Text("Switching apps can drop the connection. Keep Doodleoop open while you play — we'll try to reconnect for a few seconds if you bounce away.")
+    }
   }
 
   private var alertPresented: Binding<Bool> {
     Binding(
       get: { session.alert != nil },
       set: { if !$0 { session.clearAlert() } }
+    )
+  }
+
+  private var stayInAppTipPresented: Binding<Bool> {
+    Binding(
+      get: { session.showStayInAppTip },
+      set: { if !$0 { session.clearStayInAppTip() } }
     )
   }
 
@@ -104,7 +130,10 @@ struct ContentView: View {
 
       if let banner = session.statusBanner {
         VStack {
-          SessionStatusBanner(text: banner) {
+          SessionStatusBanner(
+            text: banner,
+            showsProgress: session.isReconnecting
+          ) {
             session.clearStatusBanner()
           }
           .padding(.top, Theme.Spacing.s3)
@@ -129,13 +158,20 @@ struct ContentView: View {
   )
 }
 
-/// Compact in-game notice for Multipeer departures and similar events.
+/// Compact in-game notice for Multipeer departures and reconnects.
 struct SessionStatusBanner: View {
   let text: String
+  var showsProgress: Bool = false
   var onDismiss: () -> Void
 
   var body: some View {
     HStack(alignment: .top, spacing: Theme.Spacing.s2) {
+      if showsProgress {
+        ProgressView()
+          .controlSize(.small)
+          .tint(Theme.Accent.default)
+      }
+
       Text(text)
         .themeText(.caption)
         .foregroundStyle(Theme.Text.primary)

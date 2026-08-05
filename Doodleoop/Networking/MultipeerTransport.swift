@@ -21,8 +21,8 @@ final class MultipeerTransport: NSObject, ObservableObject, @unchecked Sendable 
   private var browser: MCNearbyServiceBrowser?
 
   weak var delegate: MultipeerTransportDelegate?
-  /// Host sets this so mid-round invites can be rejected.
-  var shouldAcceptInvitation: (@Sendable () -> Bool)?
+  /// Host decides whether to accept; `context` carries the joiner's device id for reconnects.
+  var shouldAcceptInvitation: (@Sendable (Data?) -> Bool)?
 
   @Published private(set) var connectedPeers: [MCPeerID] = []
   @Published private(set) var discoveredPeers: [MCPeerID] = []
@@ -54,6 +54,14 @@ final class MultipeerTransport: NSObject, ObservableObject, @unchecked Sendable 
     browser?.startBrowsingForPeers()
   }
 
+  /// Browse without tearing down an existing host advertiser (unused for our star topology).
+  func ensureBrowsing() {
+    guard browser == nil else { return }
+    browser = MCNearbyServiceBrowser(peer: myPeerID, serviceType: serviceType)
+    browser?.delegate = self
+    browser?.startBrowsingForPeers()
+  }
+
   func stopHosting() {
     advertiser?.stopAdvertisingPeer()
     advertiser = nil
@@ -65,8 +73,8 @@ final class MultipeerTransport: NSObject, ObservableObject, @unchecked Sendable 
     discoveredPeers = []
   }
 
-  func invite(_ peer: MCPeerID) {
-    browser?.invitePeer(peer, to: session, withContext: nil, timeout: 20)
+  func invite(_ peer: MCPeerID, context: Data? = nil) {
+    browser?.invitePeer(peer, to: session, withContext: context, timeout: 20)
   }
 
   func disconnect() {
@@ -143,7 +151,7 @@ extension MultipeerTransport: MCNearbyServiceAdvertiserDelegate {
     withContext context: Data?,
     invitationHandler: @escaping (Bool, MCSession?) -> Void
   ) {
-    let accept = shouldAcceptInvitation?() ?? true
+    let accept = shouldAcceptInvitation?(context) ?? true
     invitationHandler(accept, accept ? session : nil)
   }
 

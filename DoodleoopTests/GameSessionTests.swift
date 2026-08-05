@@ -66,6 +66,11 @@ final class GameSessionTests: XCTestCase {
     let session = GameSession(historyStore: store)
     session.testing_configure(role: .joiner, state: lobbyState())
     session.testing_peerChange(named: "Host", state: .notConnected)
+    XCTAssertEqual(session.role, .joiner)
+    XCTAssertNotNil(session.state)
+    XCTAssertTrue(session.isReconnecting)
+
+    session.testing_expireDisconnectGrace(for: "host")
     XCTAssertEqual(session.role, .idle)
     XCTAssertNil(session.state)
     XCTAssertEqual(session.alert, .lostConnection)
@@ -88,6 +93,56 @@ final class GameSessionTests: XCTestCase {
     XCTAssertTrue(message.contains("HostPhone"))
   }
 
+  func testHostDisconnectWaitsBeforeRemovingJoiner() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    session.testing_configure(
+      role: .host,
+      state: lobbyState(),
+      peerDeviceIds: ["JoinerPhone": "joiner"],
+      messageTransport: recorder
+    )
+    session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    XCTAssertEqual(session.state?.players.map(\.id), ["host", "joiner"])
+    XCTAssertEqual(session.statusBanner, "Waiting for Joiner to reconnect…")
+
+    session.testing_expireDisconnectGrace(for: "JoinerPhone")
+    XCTAssertEqual(session.state?.players.map(\.id), ["host"])
+    XCTAssertEqual(session.statusBanner, "Joiner left the lobby")
+  }
+
+  func testHostRejoinClearsAbsentDevice() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    var state = lobbyState()
+    state = GameEngine.startRound(category: "Food", in: state)
+    state = GameEngine.handleDisconnect(deviceId: "joiner", from: state)
+    XCTAssertTrue(state.absentDeviceIds.contains("joiner"))
+
+    session.testing_configure(
+      role: .host,
+      state: state,
+      messageTransport: recorder
+    )
+    session.testing_handle(
+      .hello(playerId: "joiner", name: "Joiner", avatar: .empty),
+      fromPeerNamed: "JoinerPhone"
+    )
+    XCTAssertFalse(session.state?.absentDeviceIds.contains("joiner") ?? true)
+    XCTAssertEqual(session.statusBanner, "Joiner is back")
+  }
+
+  func testBackgroundTipOnReturn() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    session.testing_configure(role: .host, state: lobbyState())
+    session.testing_handleLifecycle(.background)
+    session.testing_handleLifecycle(.active)
+    XCTAssertTrue(session.showStayInAppTip)
+  }
+
   func testHostDisconnectShowsDepartureBanner() throws {
     let store = try makeHistoryStore()
     let session = GameSession(historyStore: store)
@@ -99,6 +154,7 @@ final class GameSessionTests: XCTestCase {
       messageTransport: recorder
     )
     session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    session.testing_expireDisconnectGrace(for: "JoinerPhone")
     XCTAssertEqual(session.statusBanner, "Joiner left the lobby")
   }
 
@@ -128,6 +184,7 @@ final class GameSessionTests: XCTestCase {
       messageTransport: recorder
     )
     session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    session.testing_expireDisconnectGrace(for: "JoinerPhone")
     XCTAssertEqual(session.state?.players.map(\.id), ["host"])
     XCTAssertTrue(recorder.sent.contains { if case .syncState = $0 { return true }; return false })
   }

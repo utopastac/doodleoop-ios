@@ -25,6 +25,7 @@
 		5D98C008DFCBE2BE439FBB6E /* StrokeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EC3B7FFD203C8D5DDC288F3 /* StrokeRenderer.swift */; };
 		5DEC14BB7A5F6146F4F2DF04 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = C265374CBB050E4CF31E3798 /* Buttons.swift */; };
 		607FB4669AA4B9D3C2BEE49C /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */; };
+		6A241B9EACA6CD3F311F8A52 /* AppLifecyclePhase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F2D71BE6EB185EB95CC4F55 /* AppLifecyclePhase.swift */; };
 		6AF0CF9DAC679C2DFAD02392 /* AppSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */; };
 		6BB7BF72C2ED7FFD453829D9 /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 704B9E72B6E409BE7AB595E7 /* DrawingView.swift */; };
 		74530BD42FFF132755EEB237 /* ReadOnlyDrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 824E8B0B80107A0F58F5A186 /* ReadOnlyDrawingView.swift */; };
@@ -87,6 +88,7 @@
 		5182D55609EA4E55902053FE /* GameMessageTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameMessageTransport.swift; sourceTree = "<group>"; };
 		571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleoopApp.swift; sourceTree = "<group>"; };
 		5CCAE13A6ED5271316121BF0 /* GameHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameHistoryStore.swift; sourceTree = "<group>"; };
+		5F2D71BE6EB185EB95CC4F55 /* AppLifecyclePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLifecyclePhase.swift; sourceTree = "<group>"; };
 		67BFA80C39CACEBFE64548A1 /* SeatHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeatHandoff.swift; sourceTree = "<group>"; };
 		6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealView.swift; sourceTree = "<group>"; };
 		704B9E72B6E409BE7AB595E7 /* DrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingView.swift; sourceTree = "<group>"; };
@@ -179,6 +181,7 @@
 		6F7641261673D9E5B10ADE6F /* Networking */ = {
 			isa = PBXGroup;
 			children = (
+				5F2D71BE6EB185EB95CC4F55 /* AppLifecyclePhase.swift */,
 				A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */,
 				5182D55609EA4E55902053FE /* GameMessageTransport.swift */,
 				D84840D7FCCB04D99D9836AF /* GameSession.swift */,
@@ -340,6 +343,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6A241B9EACA6CD3F311F8A52 /* AppLifecyclePhase.swift in Sources */,
 				6AF0CF9DAC679C2DFAD02392 /* AppSettingsView.swift in Sources */,
 				C6EA27062A7F8D4D040B07EE /* AvatarBadge.swift in Sources */,
 				5DEC14BB7A5F6146F4F2DF04 /* Buttons.swift in Sources */,

@@ -37,6 +37,13 @@ enum GameEngine {
     return next
   }
 
+  /// Clears a mid-round absence so a returning device can play again.
+  static func clearAbsent(deviceId: String, in state: GameState) -> GameState {
+    var next = state
+    next.absentDeviceIds.remove(deviceId)
+    return next
+  }
+
   /// Lobby: drop seats. Mid-round: keep seats (pad indices stay stable), mark the
   /// device absent, and fill empty submissions for this turn so the round can advance.
   static func handleDisconnect(
