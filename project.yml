@@ -25,6 +25,7 @@ targets:
           - Fraunces_72pt-Bold.ttf
           - SpaceMono-Regular.ttf
           - SpaceMono-Bold.ttf
+        NSPhotoLibraryAddUsageDescription: Doodleoop saves exported drawings to your photo library.
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         "UISupportedInterfaceOrientations~ipad":

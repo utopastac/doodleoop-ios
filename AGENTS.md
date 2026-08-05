@@ -41,9 +41,11 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 
 ## Leaving a game
 
-- In-game screens (host/joiner) show a global **leave** control via `.leaveGameChrome()` on `ContentView`’s game flow — Phosphor `sign-out`, top trailing. Lobby, reveal and round-over lay the same control out in their own 40pt toolbar band instead of the overlay.
+- In-game screens (host/joiner) show a global **leave** control via `.leaveGameChrome()` on `ContentView`’s game flow — Phosphor `sign-out`, top trailing. Lobby, reveal and round-over use `LeaveToolbarBand` for the same control in a 40pt toolbar band instead of the overlay.
 - Confirm with the dialog in `LeaveGameButton` before calling `session.leaveGame()`.
 - Top-row content that sits on the trailing edge (drawing / guessing / reveal) should pad with `Theme.Sizing.leaveButtonReserve` so it doesn’t collide with the chrome.
+- Host leave broadcasts `.sessionEnded` before disconnect; joiners also exit if the Multipeer session drops.
+- Mid-round disconnects mark the device `absentDeviceIds` and auto-fill empty submissions so the round can advance; seats are dropped on return to lobby.
 
 ## Sheets
 

@@ -22,6 +22,7 @@ final class GameSession: ObservableObject {
   let historyStore: GameHistoryStore
 
   private var transport: MultipeerTransport?
+  private var messageTransport: GameMessageTransport?
   private var peerDeviceIds: [String: String] = [:]
   private var cancellables = Set<AnyCancellable>()
   private var phaseTimerTask: Task<Void, Never>?
@@ -86,6 +87,7 @@ final class GameSession: ObservableObject {
     transport.delegate = self
     transport.startHosting(discoveryInfo: ["host": localDisplayName])
     self.transport = transport
+    self.messageTransport = MultipeerMessageTransport(transport)
     bindPeers(transport)
   }
 
@@ -96,6 +98,7 @@ final class GameSession: ObservableObject {
     transport.delegate = self
     transport.startBrowsing()
     self.transport = transport
+    self.messageTransport = MultipeerMessageTransport(transport)
     bindPeers(transport)
   }
 
@@ -103,12 +106,19 @@ final class GameSession: ObservableObject {
     transport?.invite(peer)
   }
 
-  func leaveGame(clearState: Bool = true) {
-    if role == .joiner {
-      send(.leave)
+  func leaveGame(clearState: Bool = true, notifyPeers: Bool = true) {
+    // Broadcast before tearing down so peers can exit cleanly.
+    if notifyPeers {
+      if role == .host {
+        send(.sessionEnded)
+      } else if role == .joiner {
+        send(.leave)
+      }
     }
+    messageTransport?.disconnect()
     transport?.disconnect()
     transport = nil
+    messageTransport = nil
     cancellables.removeAll()
     cancelPhaseTimer()
     discoveredPeers = []
@@ -370,12 +380,32 @@ final class GameSession: ObservableObject {
 
   private func sync(_ newState: GameState) {
     applyState(newState)
-    send(.syncState(newState))
+    // Mid-round syncs omit avatar ink — joiners already have it from hello /
+    // lobby sync. Lobby and round-over keep full avatars for the player list.
+    let payload: GameState
+    switch newState.phase {
+    case .lobby, .roundOver:
+      payload = newState
+    case .drawing, .guessing, .reveal:
+      payload = newState.strippingAvatars()
+    }
+    send(.syncState(payload))
   }
 
   private func applyState(_ newState: GameState) {
-    state = newState
-    historyStore.saveIfNeeded(from: newState)
+    var merged = newState
+    if let previous = state {
+      merged.players = newState.players.map { player in
+        guard player.avatar.isEmpty,
+              let prior = previous.player(id: player.id),
+              !prior.avatar.isEmpty else { return player }
+        var restored = player
+        restored.avatar = prior.avatar
+        return restored
+      }
+    }
+    state = merged
+    historyStore.saveIfNeeded(from: merged)
     schedulePhaseTimer()
   }
 
@@ -412,7 +442,7 @@ final class GameSession: ObservableObject {
   }
 
   private func send(_ message: NetworkMessage) {
-    transport?.send(message)
+    messageTransport?.send(message)
   }
 
   private func prepareLocalHandoffIfNeeded() {
@@ -474,9 +504,14 @@ extension GameSession: MultipeerTransportDelegate {
     case .host:
       handleHost(message, fromPeerNamed: peerName)
     case .joiner:
-      if case .syncState(let gameState) = message {
+      switch message {
+      case .syncState(let gameState):
         applyState(gameState)
         prepareLocalHandoffIfNeeded()
+      case .sessionEnded:
+        leaveGame(clearState: true, notifyPeers: false)
+      default:
+        break
       }
     case .idle:
       break
@@ -539,10 +574,10 @@ extension GameSession: MultipeerTransportDelegate {
       sync(current)
 
     case .leave:
-      current = GameEngine.removePlayers(deviceId: peerDevice, from: current)
+      current = GameEngine.handleDisconnect(deviceId: peerDevice, from: current)
       sync(current)
 
-    case .syncState, .startRound, .returnToLobby:
+    case .syncState, .sessionEnded:
       break
     }
   }
@@ -555,9 +590,12 @@ extension GameSession: MultipeerTransportDelegate {
         send(.hello(playerId: devicePlayerId, name: localDisplayName, avatar: localAvatar))
       }
     case .notConnected:
-      if role == .host, var current = self.state {
+      if role == .joiner {
+        // Host (or session) dropped — don't leave joiners stuck mid-round.
+        leaveGame(clearState: true, notifyPeers: false)
+      } else if role == .host, var current = self.state {
         let peerDevice = peerDeviceIds[peerName] ?? peerName
-        current = GameEngine.removePlayers(deviceId: peerDevice, from: current)
+        current = GameEngine.handleDisconnect(deviceId: peerDevice, from: current)
         peerDeviceIds[peerName] = nil
         sync(current)
       }
@@ -570,3 +608,34 @@ extension GameSession: MultipeerTransportDelegate {
     state.player(id: playerId)?.deviceId == peerDevice
   }
 }
+
+#if DEBUG
+extension GameSession {
+  /// Test seam: set role/state without Multipeer.
+  func testing_configure(
+    role: Role,
+    state: GameState?,
+    localPlayerId: String? = nil,
+    peerDeviceIds: [String: String] = [:],
+    messageTransport: GameMessageTransport? = nil
+  ) {
+    self.role = role
+    self.state = state
+    self.peerDeviceIds = peerDeviceIds
+    self.messageTransport = messageTransport
+    if let localPlayerId {
+      self.localPlayerId = localPlayerId
+    }
+  }
+
+  func testing_handle(_ message: NetworkMessage, fromPeerNamed peerName: String) {
+    handle(message, fromPeerNamed: peerName)
+  }
+
+  func testing_peerChange(named peerName: String, state sessionState: MCSessionState) {
+    handlePeerChange(named: peerName, state: sessionState)
+  }
+
+  var testing_messageTransport: GameMessageTransport? { messageTransport }
+}
+#endif

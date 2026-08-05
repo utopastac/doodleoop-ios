@@ -211,6 +211,9 @@ struct GameState: Codable, Equatable {
   var maxRounds: Int = GameRoundDefaults.maxRounds
   /// Host-authored deadline for the current drawing/guessing turn.
   var phaseEndsAt: Date?
+  /// Devices that dropped mid-round. Seats stay in `players` so pad indices
+  /// stay stable; the engine auto-fills empty submissions for them each turn.
+  var absentDeviceIds: Set<String> = []
 
   init(
     phase: GamePhase = .lobby,
@@ -225,7 +228,8 @@ struct GameState: Codable, Equatable {
     drawTimeLimitSeconds: Int = GameTimerDefaults.drawSeconds,
     guessTimeLimitSeconds: Int = GameTimerDefaults.guessSeconds,
     maxRounds: Int = GameRoundDefaults.maxRounds,
-    phaseEndsAt: Date? = nil
+    phaseEndsAt: Date? = nil,
+    absentDeviceIds: Set<String> = []
   ) {
     self.phase = phase
     self.players = players
@@ -240,6 +244,7 @@ struct GameState: Codable, Equatable {
     self.guessTimeLimitSeconds = guessTimeLimitSeconds
     self.maxRounds = maxRounds
     self.phaseEndsAt = phaseEndsAt
+    self.absentDeviceIds = absentDeviceIds
   }
 
   init(from decoder: Decoder) throws {
@@ -260,6 +265,18 @@ struct GameState: Codable, Equatable {
     maxRounds = try container.decodeIfPresent(Int.self, forKey: .maxRounds)
       ?? GameRoundDefaults.maxRounds
     phaseEndsAt = try container.decodeIfPresent(Date.self, forKey: .phaseEndsAt)
+    absentDeviceIds = try container.decodeIfPresent(Set<String>.self, forKey: .absentDeviceIds) ?? []
+  }
+
+  /// Mid-round sync payload without avatar ink (joiners already have them).
+  func strippingAvatars() -> GameState {
+    var copy = self
+    copy.players = players.map { player in
+      var next = player
+      next.avatar = .empty
+      return next
+    }
+    return copy
   }
 
   func player(id: String) -> Player? {

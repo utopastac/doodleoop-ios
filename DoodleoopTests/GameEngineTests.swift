@@ -255,4 +255,151 @@ final class GameEngineTests: XCTestCase {
     XCTAssertEqual(state.guessTimeLimitSeconds, 25)
     XCTAssertEqual(state.maxRounds, 5)
   }
+
+  func testRejectsEmptyDrawing() {
+    var state = makeLobby(players: 2)
+    state = GameEngine.startRound(category: "Animals", in: state)
+    let next = GameEngine.submitDrawing(playerId: "p0", drawing: .empty, in: state)
+    XCTAssertEqual(next, state)
+    XCTAssertTrue(next.submittedPlayerIds.isEmpty)
+  }
+
+  func testRejectsEmptyGuess() {
+    var state = makeLobby(players: 2)
+    state = GameEngine.startRound(category: "Animals", in: state)
+    let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
+    for i in 0..<2 {
+      state = GameEngine.submitDrawing(playerId: "p\(i)", drawing: drawing, in: state)
+    }
+    let next = GameEngine.submitGuess(playerId: "p0", text: "   ", in: state)
+    XCTAssertEqual(next, state)
+  }
+
+  func testDuplicateSubmitIgnored() {
+    var state = makeLobby(players: 2)
+    state = GameEngine.startRound(category: "Animals", in: state)
+    let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
+    state = GameEngine.submitDrawing(playerId: "p0", drawing: drawing, in: state)
+    let again = GameEngine.submitDrawing(playerId: "p0", drawing: drawing, in: state)
+    XCTAssertEqual(again.submittedPlayerIds, ["p0"])
+    XCTAssertEqual(again.pads, state.pads)
+  }
+
+  func testWrongPhaseSubmitNoOps() {
+    var state = makeLobby(players: 2)
+    let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
+    let drawn = GameEngine.submitDrawing(playerId: "p0", drawing: drawing, in: state)
+    XCTAssertEqual(drawn, state)
+
+    state = GameEngine.startRound(category: "Animals", in: state)
+    let guessed = GameEngine.submitGuess(playerId: "p0", text: "cat", in: state)
+    XCTAssertEqual(guessed, state)
+  }
+
+  func testStartRoundRequiresTwoPlayersAndCategory() {
+    var state = makeLobby(players: 1)
+    state = GameEngine.startRound(category: "Animals", in: state)
+    XCTAssertEqual(state.phase, .lobby)
+
+    state = makeLobby(players: 2)
+    state = GameEngine.startRound(category: "  ", in: state)
+    XCTAssertEqual(state.phase, .lobby)
+  }
+
+  func testRemovePlayerLobbyAndHostReassignment() {
+    var state = makeLobby(players: 3)
+    XCTAssertEqual(state.hostId, "p0")
+    state = GameEngine.removePlayer(id: "p0", from: state)
+    XCTAssertEqual(state.players.map(\.id), ["p1", "p2"])
+    XCTAssertEqual(state.hostId, "p1")
+  }
+
+  func testRemovePlayerIgnoredMidRound() {
+    var state = makeLobby(players: 2)
+    state = GameEngine.startRound(category: "Animals", in: state)
+    let next = GameEngine.removePlayer(id: "p1", from: state)
+    XCTAssertEqual(next.players.count, 2)
+  }
+
+  func testExpireTurnInGuessingPhase() {
+    var state = makeLobby(players: 2)
+    let start = Date(timeIntervalSince1970: 3_000)
+    state = GameEngine.startRound(category: "Jobs", in: state, now: start)
+    let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
+    for i in 0..<2 {
+      state = GameEngine.submitDrawing(playerId: "p\(i)", drawing: drawing, in: state, now: start)
+    }
+    XCTAssertEqual(state.phase, .guessing)
+
+    state = GameEngine.submitGuess(playerId: "p0", text: "cat", in: state, now: start)
+    let expired = state.phaseEndsAt!
+    state = GameEngine.expireTurn(in: state, now: expired)
+    XCTAssertEqual(state.phase, .reveal)
+    XCTAssertTrue(state.pads.contains { pad in
+      pad.steps.contains {
+        if case .guess(let playerId, let text) = $0 {
+          return playerId == "p1" && text == "…"
+        }
+        return false
+      }
+    })
+  }
+
+  func testMultiSeatSameDeviceId() {
+    var state = GameState()
+    state = GameEngine.addPlayer(id: "p0", name: "A", deviceId: "phone", to: state)
+    state = GameEngine.addPlayer(id: "p1", name: "B", deviceId: "phone", to: state)
+    XCTAssertEqual(state.players.map(\.deviceId), ["phone", "phone"])
+    state = GameEngine.startRound(category: "Food", in: state)
+    XCTAssertEqual(state.pads.count, 2)
+  }
+
+  func testDisconnectMidRoundFillsAndMarksAbsent() {
+    var state = makeLobby(players: 2)
+    let now = Date(timeIntervalSince1970: 4_000)
+    state = GameEngine.startRound(category: "Jobs", in: state, now: now)
+    let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
+    state = GameEngine.submitDrawing(playerId: "p0", drawing: drawing, in: state, now: now)
+
+    state = GameEngine.handleDisconnect(deviceId: "d1", from: state, now: now)
+    XCTAssertTrue(state.absentDeviceIds.contains("d1"))
+    XCTAssertEqual(state.players.count, 2)
+    XCTAssertEqual(state.phase, .guessing)
+    // Absent seat auto-fills the new guessing turn.
+    XCTAssertEqual(state.submittedPlayerIds, ["p1"])
+    XCTAssertTrue(state.pads.contains { pad in
+      pad.steps.contains {
+        if case .drawing(let playerId, let art) = $0 {
+          return playerId == "p1" && art.isEmpty
+        }
+        return false
+      }
+    })
+  }
+
+  func testAbsentDeviceAutoFillsNextTurn() {
+    var state = makeLobby(players: 2)
+    let now = Date(timeIntervalSince1970: 5_000)
+    state = GameEngine.startRound(category: "Jobs", in: state, now: now)
+    let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
+    state = GameEngine.submitDrawing(playerId: "p0", drawing: drawing, in: state, now: now)
+    state = GameEngine.handleDisconnect(deviceId: "d1", from: state, now: now)
+    XCTAssertEqual(state.phase, .guessing)
+
+    state = GameEngine.submitGuess(playerId: "p0", text: "cat", in: state, now: now)
+    // p1 absent should auto-fill the guess and advance to reveal (2-player round).
+    XCTAssertEqual(state.phase, .reveal)
+  }
+
+  func testReturnToLobbyDropsAbsentDevices() {
+    var state = makeLobby(players: 2)
+    let now = Date(timeIntervalSince1970: 6_000)
+    state = GameEngine.startRound(category: "Jobs", in: state, now: now)
+    state = GameEngine.handleDisconnect(deviceId: "d1", from: state, now: now)
+    state.phase = .roundOver
+    state = GameEngine.returnToLobby(in: state)
+    XCTAssertEqual(state.phase, .lobby)
+    XCTAssertEqual(state.players.map(\.id), ["p0"])
+    XCTAssertTrue(state.absentDeviceIds.isEmpty)
+  }
 }

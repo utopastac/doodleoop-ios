@@ -37,6 +37,31 @@ enum GameEngine {
     return next
   }
 
+  /// Lobby: drop seats. Mid-round: keep seats (pad indices stay stable), mark the
+  /// device absent, and fill empty submissions for this turn so the round can advance.
+  static func handleDisconnect(
+    deviceId: String,
+    from state: GameState,
+    now: Date = Date()
+  ) -> GameState {
+    switch state.phase {
+    case .lobby:
+      return removePlayers(deviceId: deviceId, from: state)
+    case .drawing, .guessing:
+      var next = state
+      next.absentDeviceIds.insert(deviceId)
+      return fillEmptySubmissions(
+        forDeviceId: deviceId,
+        in: next,
+        now: now
+      )
+    case .reveal, .roundOver:
+      var next = state
+      next.absentDeviceIds.insert(deviceId)
+      return next
+    }
+  }
+
   static func updateName(playerId: String, name: String, in state: GameState) -> GameState {
     var next = state
     guard let index = next.playerIndex(playerId) else { return state }
@@ -80,6 +105,7 @@ enum GameEngine {
     next.submittedPlayerIds = []
     next.revealPadIndex = 0
     next.revealStepIndex = 0
+    next.absentDeviceIds = []
     next.pads = next.players.map { player in
       SketchPad(id: player.id, steps: [.prompt(trimmed)])
     }
@@ -134,20 +160,7 @@ enum GameEngine {
     var next = state
     guard next.phase == .drawing || next.phase == .guessing else { return state }
     guard let ends = next.phaseEndsAt, now >= ends else { return state }
-
-    for player in next.players where !next.submittedPlayerIds.contains(player.id) {
-      guard var pad = next.pad(inFrontOf: player.id),
-            let padIndex = next.pads.firstIndex(where: { $0.id == pad.id }) else { continue }
-      if next.phase == .drawing {
-        pad.steps.append(.drawing(playerId: player.id, drawing: .empty))
-      } else {
-        pad.steps.append(.guess(playerId: player.id, text: "…"))
-      }
-      next.pads[padIndex] = pad
-      next.submittedPlayerIds.insert(player.id)
-    }
-
-    return advanceIfReady(next, now: now)
+    return fillEmptySubmissions(forDeviceId: nil, in: next, now: now)
   }
 
   /// Reveals the next contribution on the current pad, then moves to the next pad,
@@ -177,7 +190,43 @@ enum GameEngine {
     next.revealPadIndex = 0
     next.revealStepIndex = 0
     next.phaseEndsAt = nil
+    // Drop seats that left mid-round now that pad indices no longer matter.
+    let absent = next.absentDeviceIds
+    next.absentDeviceIds = []
+    for deviceId in absent {
+      next = removePlayers(deviceId: deviceId, from: next)
+    }
     return next
+  }
+
+  /// Fills empty submissions for one device (`deviceId`), every absent device
+  /// (`onlyAbsent: true`), or every seat (`deviceId == nil && !onlyAbsent`).
+  private static func fillEmptySubmissions(
+    forDeviceId deviceId: String?,
+    onlyAbsent: Bool = false,
+    in state: GameState,
+    now: Date
+  ) -> GameState {
+    var next = state
+    guard next.phase == .drawing || next.phase == .guessing else { return state }
+    let targets = next.players.filter { player in
+      guard !next.submittedPlayerIds.contains(player.id) else { return false }
+      if let deviceId { return player.deviceId == deviceId }
+      if onlyAbsent { return next.absentDeviceIds.contains(player.deviceId) }
+      return true
+    }
+    for player in targets {
+      guard var pad = next.pad(inFrontOf: player.id),
+            let padIndex = next.pads.firstIndex(where: { $0.id == pad.id }) else { continue }
+      if next.phase == .drawing {
+        pad.steps.append(.drawing(playerId: player.id, drawing: .empty))
+      } else {
+        pad.steps.append(.guess(playerId: player.id, text: "…"))
+      }
+      next.pads[padIndex] = pad
+      next.submittedPlayerIds.insert(player.id)
+    }
+    return advanceIfReady(next, now: now)
   }
 
   private static func advanceIfReady(_ state: GameState, now: Date) -> GameState {
@@ -198,6 +247,10 @@ enum GameEngine {
 
     next.phase = next.isDrawTurn ? .drawing : .guessing
     next.phaseEndsAt = now.addingTimeInterval(TimeInterval(next.currentTurnTimeLimitSeconds))
+    // Absent devices auto-submit so the next turn does not wait on a timer.
+    if !next.absentDeviceIds.isEmpty {
+      next = fillEmptySubmissions(forDeviceId: nil, onlyAbsent: true, in: next, now: now)
+    }
     return next
   }
 
