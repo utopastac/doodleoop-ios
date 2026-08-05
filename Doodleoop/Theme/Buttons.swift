@@ -44,8 +44,6 @@ enum DoodleButtonKind {
 
 struct DoodleButtonStyle: ButtonStyle {
   var kind: DoodleButtonKind = .primary
-  /// When true, wraps the label as `[ TITLE ]` (design convention).
-  var brackets: Bool = true
 
   func makeBody(configuration: Configuration) -> some View {
     configuration.label
@@ -73,6 +71,34 @@ enum DoodleLabel {
       .trimmingCharacters(in: CharacterSet(charactersIn: "[]"))
       .trimmingCharacters(in: .whitespacesAndNewlines)
     return "[ \(trimmed.uppercased()) ]"
+  }
+}
+
+/// Shared ink primary save / done styling — enabled and disabled states.
+extension View {
+  func doodlePrimarySaveLabel(isEnabled: Bool) -> some View {
+    self
+      .themeText(.button)
+      .foregroundStyle(Theme.Paper.tan.opacity(isEnabled ? 1 : 0.5))
+      .padding(.horizontal, Theme.Spacing.s5)
+      .frame(height: Theme.Sizing.inputHeight)
+      .background(Theme.Ink.deep.opacity(isEnabled ? 1 : 0.35))
+      .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+  }
+}
+
+struct DoodlePrimarySaveButton: View {
+  let title: String
+  var isEnabled: Bool
+  let action: () -> Void
+
+  var body: some View {
+    Button(action: action) {
+      Text(DoodleLabel.bracketed(title))
+        .doodlePrimarySaveLabel(isEnabled: isEnabled)
+    }
+    .buttonStyle(.plain)
+    .disabled(!isEnabled)
   }
 }
 
@@ -133,29 +159,5 @@ struct DoodleSegmentedControl<Option: Hashable>: View {
       RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular)
         .strokeBorder(Theme.Stroke.subtle, lineWidth: Theme.Borders.thin)
     }
-  }
-}
-
-// Legacy aliases used across screens — map onto the new kinds.
-struct PrimaryButtonStyle: ButtonStyle {
-  var color: Color = Theme.Ink.deep
-
-  func makeBody(configuration: Configuration) -> some View {
-    let kind: DoodleButtonKind = color == Theme.Biro.medium || color == Theme.Accent.default
-      ? .accent
-      : .primary
-    DoodleButtonStyle(kind: kind).makeBody(configuration: configuration)
-  }
-}
-
-struct SecondaryButtonStyle: ButtonStyle {
-  func makeBody(configuration: Configuration) -> some View {
-    DoodleButtonStyle(kind: .secondary).makeBody(configuration: configuration)
-  }
-}
-
-struct TertiaryButtonStyle: ButtonStyle {
-  func makeBody(configuration: Configuration) -> some View {
-    DoodleButtonStyle(kind: .tertiary).makeBody(configuration: configuration)
   }
 }

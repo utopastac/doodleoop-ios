@@ -44,9 +44,7 @@ struct GuessingView: View {
         Spacer()
       }
 
-      TextField("Your guess", text: $guess)
-        .themeText(.label)
-        .textFieldStyle(.roundedBorder)
+      DoodleTextField(placeholder: "Your guess", text: $guess)
         .pageHorizontalPadding()
 
       Button(DoodleLabel.bracketed("Submit guess")) {

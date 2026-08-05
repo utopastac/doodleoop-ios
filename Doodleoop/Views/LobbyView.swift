@@ -17,8 +17,7 @@ struct LobbyView: View {
 
   var body: some View {
     VStack(alignment: .leading, spacing: 0) {
-      // Leave sits in its own 40pt band between horizontal rails (Figma y 77–117).
-      leaveToolbar
+      LeaveToolbarBand()
         .gridBand()
 
       // Title (80) + settings (64) share one block before the players rail.
@@ -66,15 +65,6 @@ struct LobbyView: View {
   }
 
   // MARK: - Header
-
-  /// 40×40 sign-out, trailing flush to the page margin rail.
-  private var leaveToolbar: some View {
-    HStack(spacing: 0) {
-      Spacer(minLength: 0)
-      LeaveGameButton()
-    }
-    .frame(height: Theme.Spacing.s8)
-  }
 
   private var titleBlock: some View {
     Text("\(hostName)’s game")
@@ -252,20 +242,14 @@ struct LobbyView: View {
           .textCase(.uppercase)
           .tracking(Theme.FontSize.footnote * 0.07)
       } else if session.isHost {
-        Button {
+        DoodleIconButton(
+          phosphor: .x,
+          size: Theme.Spacing.s7,
+          iconSize: Theme.Sizing.iconSm,
+          accessibilityLabel: "Remove \(player.name)"
+        ) {
           session.removeLobbyPlayer(player.id)
-        } label: {
-          PhosphorIcon.x.image
-            .resizable()
-            .renderingMode(.template)
-            .scaledToFit()
-            .frame(width: Theme.Sizing.iconSm, height: Theme.Sizing.iconSm)
-            .foregroundStyle(Theme.Ink.deep)
-            .frame(width: Theme.Spacing.s7, height: Theme.Spacing.s7)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Remove \(player.name)")
       }
     }
     .padding(.horizontal, Theme.Spacing.s2)
@@ -276,20 +260,7 @@ struct LobbyView: View {
 
   private var addPlayerRow: some View {
     HStack(spacing: Theme.Spacing.s2) {
-      TextField("Player name", text: $extraName)
-        .themeText(.label)
-        .foregroundStyle(Theme.Text.primary)
-        .padding(.horizontal, Theme.Spacing.s3)
-        .padding(.vertical, Theme.Spacing.s2)
-        .frame(maxWidth: .infinity)
-        .frame(height: Theme.Spacing.s9)
-        .background(Theme.Paper.white)
-        .overlay(
-          RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular)
-            .stroke(Theme.Stroke.default, lineWidth: Theme.Borders.thick)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
-        .onSubmit(addSeat)
+      DoodleTextField(placeholder: "Player name", text: $extraName, onSubmit: addSeat)
 
       Button(DoodleLabel.bracketed("Add")) {
         addSeat()
@@ -346,18 +317,7 @@ struct CategoryPromptSheet: View {
           .themeText(.heading)
           .foregroundStyle(Theme.Text.primary)
 
-        TextField("Category for this round", text: $category)
-          .themeText(.label)
-          .foregroundStyle(Theme.Text.primary)
-          .padding(.horizontal, Theme.Spacing.s3)
-          .padding(.vertical, Theme.Spacing.s2)
-          .frame(height: Theme.Spacing.s9)
-          .background(Theme.Paper.white)
-          .overlay(
-            RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular)
-              .stroke(Theme.Stroke.default, lineWidth: Theme.Borders.thick)
-          )
-          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+        DoodleTextField(placeholder: "Category for this round", text: $category)
 
         Button(DoodleLabel.bracketed("Surprise me")) {
           category = RoundCategories.random(excluding: category)

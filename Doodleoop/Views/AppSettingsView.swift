@@ -21,7 +21,7 @@ struct AppSettingsView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      header
+      DoodleSheetHeader(title: "Settings", onDone: { dismiss() })
         .gridBand()
         .sheetHeaderInset()
 
@@ -50,32 +50,6 @@ struct AppSettingsView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .paperBackground()
     .pageMargins()
-  }
-
-  /// Title + `[ DONE ]` in a 40pt band between horizontal rails (Figma).
-  private var header: some View {
-    HStack(spacing: Theme.Spacing.s2) {
-      Text("Settings")
-        .themeText(.body)
-        .foregroundStyle(Theme.Text.primary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityAddTraits(.isHeader)
-
-      Button {
-        dismiss()
-      } label: {
-        Text(DoodleLabel.bracketed("Done"))
-          .themeText(.button)
-          .foregroundStyle(Theme.Paper.tan)
-          .padding(.horizontal, Theme.Spacing.s5)
-          .frame(height: Theme.Sizing.inputHeight)
-          .background(Theme.Ink.deep)
-          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
-      }
-      .buttonStyle(.plain)
-    }
-    .pageHorizontalPadding()
-    .frame(height: Theme.Sizing.inputHeight)
   }
 
   private func section<Content: View>(

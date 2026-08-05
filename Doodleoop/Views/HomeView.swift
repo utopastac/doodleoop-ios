@@ -163,34 +163,19 @@ struct HomeView: View {
           .doodleButton(.tertiary)
           .frame(width: 153)
 
-          Button {
+          DoodleIconButton(
+            phosphor: .clockCounterClockwise,
+            accessibilityLabel: "History"
+          ) {
             showHistory = true
-          } label: {
-            PhosphorIcon.clockCounterClockwise.image
-              .resizable()
-              .renderingMode(.template)
-              .scaledToFit()
-              .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-              .foregroundStyle(Theme.Text.primary)
-              .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
-              .background(Theme.Paper.white)
-              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
           }
-          .buttonStyle(.plain)
-          .accessibilityLabel("History")
 
-          Button {
+          DoodleIconButton(
+            symbol: "slider.horizontal.3",
+            accessibilityLabel: "Settings"
+          ) {
             showSettings = true
-          } label: {
-            Image(systemName: "slider.horizontal.3")
-              .font(.system(size: Theme.Sizing.iconMd, weight: .semibold))
-              .foregroundStyle(Theme.Text.primary)
-              .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
-              .background(Theme.Paper.white)
-              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
           }
-          .buttonStyle(.plain)
-          .accessibilityLabel("Settings")
         }
         .frame(maxWidth: .infinity)
         .frame(height: rulesHeight)
@@ -340,52 +325,29 @@ struct AvatarSetupView: View {
   }
 
   private var saveButton: some View {
-    Button(DoodleLabel.bracketed(saveLabel)) {
+    DoodlePrimarySaveButton(title: saveLabel, isEnabled: canSave) {
       onSave(drawing)
     }
-    .themeText(.button)
-    .foregroundStyle(Theme.Paper.tan.opacity(canSave ? 1 : 0.5))
-    .padding(.horizontal, Theme.Spacing.s5)
     .frame(maxWidth: .infinity)
-    .frame(height: Theme.Sizing.inputHeight)
-    .background(Theme.Ink.deep.opacity(canSave ? 1 : 0.35))
-    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
-    .disabled(!canSave)
   }
 
+  @ViewBuilder
   private func dismissButton(action: @escaping () -> Void) -> some View {
-    Button(action: action) {
-      PhosphorIcon.x.image
-        .resizable()
-        .renderingMode(.template)
-        .scaledToFit()
-        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-        .foregroundStyle(Theme.Text.primary)
-        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
-        .background(Theme.Paper.white)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
-    }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Cancel")
+    DoodleIconButton(
+      phosphor: .x,
+      accessibilityLabel: "Cancel",
+      action: action
+    )
   }
 
   private var clearButton: some View {
-    Button {
+    DoodleIconButton(
+      phosphor: .trash,
+      isEnabled: !drawing.isEmpty,
+      accessibilityLabel: "Clear"
+    ) {
       undoStack.registerClear(before: drawing)
       drawing = .empty
-    } label: {
-      PhosphorIcon.trash.image
-        .resizable()
-        .renderingMode(.template)
-        .scaledToFit()
-        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-        .foregroundStyle(Theme.Text.primary.opacity(drawing.isEmpty ? 0.35 : 1))
-        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
-        .background(Theme.Paper.white)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
     }
-    .buttonStyle(.plain)
-    .disabled(drawing.isEmpty)
-    .accessibilityLabel("Clear")
   }
 }

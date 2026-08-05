@@ -8,7 +8,7 @@ struct GameHistoryView: View {
 
   var body: some View {
     VStack(spacing: 0) {
-      header
+      DoodleSheetHeader(title: "History", onDone: { dismiss() })
         .gridBand()
 
       if history.games.isEmpty {
@@ -21,32 +21,6 @@ struct GameHistoryView: View {
     .paperBackground()
     .pageMargins()
     .toolbar(.hidden, for: .navigationBar)
-  }
-
-  /// Title + `[ DONE ]` in a 40pt band between horizontal rails (Figma).
-  private var header: some View {
-    HStack(spacing: Theme.Spacing.s2) {
-      Text("History")
-        .themeText(.body)
-        .foregroundStyle(Theme.Text.primary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityAddTraits(.isHeader)
-
-      Button {
-        dismiss()
-      } label: {
-        Text(DoodleLabel.bracketed("Done"))
-          .themeText(.button)
-          .foregroundStyle(Theme.Paper.tan)
-          .padding(.horizontal, Theme.Spacing.s5)
-          .frame(height: Theme.Sizing.inputHeight)
-          .background(Theme.Ink.deep)
-          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
-      }
-      .buttonStyle(.plain)
-    }
-    .pageHorizontalPadding()
-    .frame(height: Theme.Sizing.inputHeight)
   }
 
   private var emptyState: some View {
@@ -154,25 +128,16 @@ private struct HistoryItemRow: View {
 // MARK: - Shared chrome
 
 /// Paper-white 40×40 back control (Figma `Icon Button`, secondary).
-private struct HistoryBackButton: View {
+struct HistoryBackButton: View {
   @Environment(\.dismiss) private var dismiss
 
   var body: some View {
-    Button {
+    DoodleIconButton(
+      phosphor: .arrowLeft,
+      accessibilityLabel: "Back"
+    ) {
       dismiss()
-    } label: {
-      PhosphorIcon.arrowLeft.image
-        .resizable()
-        .renderingMode(.template)
-        .scaledToFit()
-        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-        .foregroundStyle(Theme.Ink.deep)
-        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
-        .background(Theme.Paper.white)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Back")
   }
 }
 

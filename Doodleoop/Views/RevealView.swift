@@ -113,20 +113,10 @@ struct RevealView: View {
   /// 40pt title band with leave control — matches Figma reveal header + Lobby leave layout.
   private func padHeader(starterName: String?) -> some View {
     let title = starterName.map { "\($0)’s Pad" } ?? "Pad"
-    return HStack(spacing: 0) {
-      Text(title)
-        .themeText(.body)
-        .foregroundStyle(Theme.Text.primary)
-        .contentTransition(.opacity)
-        .animation(Theme.Motion.reveal, value: title)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityAddTraits(.isHeader)
-
-      LeaveGameButton()
-    }
-    .frame(height: Theme.Spacing.s8)
-    .pageHorizontalPadding()
-    .gridBand()
+    return LeaveToolbarBand(title: title)
+      .contentTransition(.opacity)
+      .animation(Theme.Motion.reveal, value: title)
+      .gridBand()
   }
 
   private func categoryBlock(_ category: String) -> some View {
@@ -289,18 +279,8 @@ struct RoundOverView: View {
 
   /// 40pt title band with leave control — same layout as the reveal header.
   private var header: some View {
-    HStack(spacing: 0) {
-      Text("Doodloop complete")
-        .themeText(.body)
-        .foregroundStyle(Theme.Text.primary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityAddTraits(.isHeader)
-
-      LeaveGameButton()
-    }
-    .frame(height: Theme.Spacing.s8)
-    .pageHorizontalPadding()
-    .gridBand()
+    LeaveToolbarBand(title: "Doodloop complete")
+      .gridBand()
   }
 
   @ViewBuilder

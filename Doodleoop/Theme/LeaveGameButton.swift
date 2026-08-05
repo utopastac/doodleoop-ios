@@ -9,21 +9,14 @@ struct LeaveGameButton: View {
   var size: CGFloat = Theme.Spacing.s8
 
   var body: some View {
-    Button {
+    DoodleIconButton(
+      phosphor: .signOut,
+      variant: .ink,
+      size: size,
+      accessibilityLabel: "Leave game"
+    ) {
       showConfirm = true
-    } label: {
-      PhosphorIcon.signOut.image
-        .resizable()
-        .renderingMode(.template)
-        .scaledToFit()
-        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-        .foregroundStyle(Theme.Paper.tan)
-        .frame(width: size, height: size)
-        .background(Theme.Ink.deep)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
     }
-    .buttonStyle(.plain)
-    .accessibilityLabel("Leave game")
     .confirmationDialog(
       session.isHost ? "End this game?" : "Leave this game?",
       isPresented: $showConfirm,
