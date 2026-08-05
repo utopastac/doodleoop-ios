@@ -15,6 +15,12 @@ final class GameSession {
   private(set) var role: Role = .idle
   private(set) var discoveredPeers: [MCPeerID] = []
   private(set) var handoff: SeatHandoff?
+  /// Joiner browse / invite progress for lobby UI.
+  private(set) var joinStatus: JoinStatus = .idle
+  /// One-shot alert shown after returning home or when Multipeer can't start.
+  private(set) var alert: SessionAlert?
+  /// Short in-game note (e.g. someone left). Cleared by the UI.
+  private(set) var statusBanner: String?
 
   var localDisplayName: String
   private(set) var localAvatar: Drawing
@@ -30,6 +36,8 @@ final class GameSession {
   private var peerDeviceIds: [String: String] = [:]
   private var cancellables = Set<AnyCancellable>()
   private var phaseTimerTask: Task<Void, Never>?
+  /// Read from Multipeer invite callbacks (may be off the main actor).
+  private nonisolated(unsafe) var acceptsInvitations = true
 
   enum Role: Equatable {
     case idle
@@ -74,7 +82,8 @@ final class GameSession {
   // MARK: - Lobby
 
   func hostGame() {
-    leaveGame(clearState: true)
+    leaveGame(clearState: true, notifyPeers: false)
+    clearNotices()
     role = .host
     var lobby = GameState()
     lobby = GameEngine.addPlayer(
@@ -90,6 +99,10 @@ final class GameSession {
 
     let transport = MultipeerTransport(displayName: localDisplayName, serviceType: Self.serviceType)
     transport.delegate = self
+    transport.shouldAcceptInvitation = { [weak self] in
+      self?.acceptsInvitations ?? false
+    }
+    acceptsInvitations = true
     transport.startHosting(discoveryInfo: ["host": localDisplayName])
     self.transport = transport
     self.messageTransport = MultipeerMessageTransport(transport)
@@ -97,8 +110,10 @@ final class GameSession {
   }
 
   func startBrowsing() {
-    leaveGame(clearState: true)
+    leaveGame(clearState: true, notifyPeers: false)
+    clearNotices()
     role = .joiner
+    joinStatus = .browsing
     let transport = MultipeerTransport(displayName: localDisplayName, serviceType: Self.serviceType)
     transport.delegate = self
     transport.startBrowsing()
@@ -108,7 +123,23 @@ final class GameSession {
   }
 
   func join(_ peer: MCPeerID) {
+    guard role == .joiner else { return }
+    joinStatus = .connecting(to: peer.displayName)
     transport?.invite(peer)
+  }
+
+  func clearAlert() {
+    alert = nil
+  }
+
+  func clearStatusBanner() {
+    statusBanner = nil
+  }
+
+  func dismissJoinFailure() {
+    if case .failed = joinStatus {
+      joinStatus = .browsing
+    }
   }
 
   func leaveGame(clearState: Bool = true, notifyPeers: Bool = true) {
@@ -129,6 +160,7 @@ final class GameSession {
     discoveredPeers = []
     peerDeviceIds = [:]
     handoff = nil
+    joinStatus = .idle
     role = .idle
     if clearState {
       state = nil
@@ -221,6 +253,9 @@ final class GameSession {
     guard isHost, var current = state else { return }
     current = GameEngine.startRound(category: draftCategory, in: current)
     sync(current)
+    acceptsInvitations = false
+    // Stop being discoverable once the round is underway.
+    transport?.stopHosting()
     prepareLocalHandoffIfNeeded()
   }
 
@@ -261,6 +296,8 @@ final class GameSession {
     current = GameEngine.returnToLobby(in: current)
     draftCategory = ""
     sync(current)
+    acceptsInvitations = true
+    transport?.startHosting(discoveryInfo: ["host": localDisplayName])
   }
 
   func confirmHandoff() {
@@ -390,6 +427,20 @@ final class GameSession {
   private func replaceState(_ newState: GameState?) {
     state = newState
     phase = newState?.phase
+  }
+
+  private func clearNotices() {
+    alert = nil
+    statusBanner = nil
+  }
+
+  private func presentAlert(_ next: SessionAlert) {
+    alert = next
+  }
+
+  private func endJoinerSession(reason: SessionAlert) {
+    presentAlert(reason)
+    leaveGame(clearState: true, notifyPeers: false)
   }
 
   private func bindPeers(_ transport: MultipeerTransport) {
@@ -533,9 +584,10 @@ extension GameSession: MultipeerTransportDelegate {
       switch message {
       case .syncState(let gameState):
         applyState(gameState)
+        joinStatus = .idle
         prepareLocalHandoffIfNeeded()
       case .sessionEnded:
-        leaveGame(clearState: true, notifyPeers: false)
+        endJoinerSession(reason: .hostEndedGame)
       default:
         break
       }
@@ -600,6 +652,7 @@ extension GameSession: MultipeerTransportDelegate {
       sync(current)
 
     case .leave:
+      announceDeparture(deviceId: peerDevice, in: current)
       current = GameEngine.handleDisconnect(deviceId: peerDevice, from: current)
       sync(current)
 
@@ -613,14 +666,15 @@ extension GameSession: MultipeerTransportDelegate {
     switch sessionState {
     case .connected:
       if role == .joiner {
+        joinStatus = .idle
         send(.hello(playerId: devicePlayerId, name: localDisplayName, avatar: localAvatar))
       }
     case .notConnected:
       if role == .joiner {
-        // Host (or session) dropped — don't leave joiners stuck mid-round.
-        leaveGame(clearState: true, notifyPeers: false)
+        handleJoinerDisconnect(peerName: peerName)
       } else if role == .host, var current = self.state {
         let peerDevice = peerDeviceIds[peerName] ?? peerName
+        announceDeparture(deviceId: peerDevice, in: current)
         current = GameEngine.handleDisconnect(deviceId: peerDevice, from: current)
         peerDeviceIds[peerName] = nil
         sync(current)
@@ -630,8 +684,57 @@ extension GameSession: MultipeerTransportDelegate {
     }
   }
 
+  /// Failed invite → stay browsing with an error. Active game → leave with an explanation.
+  private func handleJoinerDisconnect(peerName: String) {
+    if case .connecting(let name) = joinStatus {
+      joinStatus = .failed(
+        message: SessionAlert.joinFailed(peerName: name).message
+      )
+      return
+    }
+    if state != nil {
+      endJoinerSession(reason: .lostConnection)
+    }
+  }
+
+  private func announceDeparture(deviceId: String, in state: GameState) {
+    let names = state.players.filter { $0.deviceId == deviceId }.map(\.name)
+    guard let name = names.first else { return }
+    if state.phase == .lobby {
+      statusBanner = "\(name) left the lobby"
+    } else {
+      statusBanner = "\(name) left — continuing without them"
+    }
+  }
+
   private func owns(_ playerId: String, peerDevice: String, in state: GameState) -> Bool {
     state.player(id: playerId)?.deviceId == peerDevice
+  }
+}
+
+extension GameSession {
+  nonisolated func transport(
+    _ transport: MultipeerTransport,
+    didFailToAdvertise error: Error
+  ) {
+    Task { @MainActor in
+      presentAlert(
+        .localNetwork(
+          message: "Couldn't share this game on the local network. Check Settings → Doodleoop → Local Network, then try Create again."
+        )
+      )
+    }
+  }
+
+  nonisolated func transport(
+    _ transport: MultipeerTransport,
+    didFailToBrowse error: Error
+  ) {
+    Task { @MainActor in
+      joinStatus = .failed(
+        message: "Couldn't look for nearby games. Check Settings → Doodleoop → Local Network, then try Join again."
+      )
+    }
   }
 }
 
@@ -643,13 +746,15 @@ extension GameSession {
     state: GameState?,
     localPlayerId: String? = nil,
     peerDeviceIds: [String: String] = [:],
-    messageTransport: GameMessageTransport? = nil
+    messageTransport: GameMessageTransport? = nil,
+    joinStatus: JoinStatus = .idle
   ) {
     self.role = role
     self.state = state
     self.phase = state?.phase
     self.peerDeviceIds = peerDeviceIds
     self.messageTransport = messageTransport
+    self.joinStatus = joinStatus
     if let localPlayerId {
       self.localPlayerId = localPlayerId
     }

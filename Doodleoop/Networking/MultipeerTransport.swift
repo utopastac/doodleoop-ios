@@ -7,6 +7,8 @@ protocol MultipeerTransportDelegate: AnyObject {
   func transport(_ transport: MultipeerTransport, peer peerID: MCPeerID, didChange state: MCSessionState)
   func transport(_ transport: MultipeerTransport, foundPeer peerID: MCPeerID, discoveryInfo: [String: String]?)
   func transport(_ transport: MultipeerTransport, lostPeer peerID: MCPeerID)
+  func transport(_ transport: MultipeerTransport, didFailToAdvertise error: Error)
+  func transport(_ transport: MultipeerTransport, didFailToBrowse error: Error)
 }
 
 /// Thin Multipeer Connectivity wrapper. Apps supply a Bonjour `serviceType` and encode their own messages.
@@ -19,6 +21,8 @@ final class MultipeerTransport: NSObject, ObservableObject, @unchecked Sendable 
   private var browser: MCNearbyServiceBrowser?
 
   weak var delegate: MultipeerTransportDelegate?
+  /// Host sets this so mid-round invites can be rejected.
+  var shouldAcceptInvitation: (@Sendable () -> Bool)?
 
   @Published private(set) var connectedPeers: [MCPeerID] = []
   @Published private(set) var discoveredPeers: [MCPeerID] = []
@@ -139,7 +143,18 @@ extension MultipeerTransport: MCNearbyServiceAdvertiserDelegate {
     withContext context: Data?,
     invitationHandler: @escaping (Bool, MCSession?) -> Void
   ) {
-    invitationHandler(true, session)
+    let accept = shouldAcceptInvitation?() ?? true
+    invitationHandler(accept, accept ? session : nil)
+  }
+
+  func advertiser(
+    _ advertiser: MCNearbyServiceAdvertiser,
+    didNotStartAdvertisingPeer error: Error
+  ) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.delegate?.transport(self, didFailToAdvertise: error)
+    }
   }
 }
 
@@ -163,6 +178,16 @@ extension MultipeerTransport: MCNearbyServiceBrowserDelegate {
       guard let self else { return }
       self.discoveredPeers.removeAll { $0 == peerID }
       self.delegate?.transport(self, lostPeer: peerID)
+    }
+  }
+
+  func browser(
+    _ browser: MCNearbyServiceBrowser,
+    didNotStartBrowsingForPeers error: Error
+  ) {
+    DispatchQueue.main.async { [weak self] in
+      guard let self else { return }
+      self.delegate?.transport(self, didFailToBrowse: error)
     }
   }
 }

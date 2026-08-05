@@ -26,6 +26,10 @@ targets:
           - SpaceMono-Regular.ttf
           - SpaceMono-Bold.ttf
         NSPhotoLibraryAddUsageDescription: Doodleoop saves exported drawings to your photo library.
+        NSLocalNetworkUsageDescription: Doodleoop uses the local network so nearby phones can play together.
+        NSBonjourServices:
+          - _doodleoop-game._tcp
+          - _doodleoop-game._udp
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         "UISupportedInterfaceOrientations~ipad":

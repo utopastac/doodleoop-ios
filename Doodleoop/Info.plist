@@ -26,6 +26,13 @@
 	</array>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Doodleoop saves exported drawings to your photo library.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Doodleoop uses the local network so nearby phones can play together.</string>
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_doodleoop-game._tcp</string>
+		<string>_doodleoop-game._udp</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

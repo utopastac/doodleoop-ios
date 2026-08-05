@@ -46,6 +46,8 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 - Top-row content that sits on the trailing edge (drawing / guessing / reveal) should pad with `Theme.Sizing.leaveButtonReserve` so it doesn’t collide with the chrome.
 - Host leave broadcasts `.sessionEnded` before disconnect; joiners also exit if the Multipeer session drops.
 - Mid-round disconnects mark the device `absentDeviceIds` and auto-fill empty submissions so the round can advance; seats are dropped on return to lobby.
+- Failed joins stay on the browse lobby with `joinStatus` — don’t eject to home. Host-drop / session-ended show `SessionAlert` on home. Departures set `statusBanner` for the host.
+- Info.plist must keep `NSLocalNetworkUsageDescription` and `NSBonjourServices` for `_doodleoop-game._tcp` / `._udp`.
 
 ## Sheets
 

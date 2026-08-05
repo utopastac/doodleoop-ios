@@ -58,6 +58,7 @@ final class GameSessionTests: XCTestCase {
     session.testing_handle(.sessionEnded, fromPeerNamed: "Host")
     XCTAssertEqual(session.role, .idle)
     XCTAssertNil(session.state)
+    XCTAssertEqual(session.alert, .hostEndedGame)
   }
 
   func testJoinerHostDisconnectLeavesGame() throws {
@@ -67,6 +68,38 @@ final class GameSessionTests: XCTestCase {
     session.testing_peerChange(named: "Host", state: .notConnected)
     XCTAssertEqual(session.role, .idle)
     XCTAssertNil(session.state)
+    XCTAssertEqual(session.alert, .lostConnection)
+  }
+
+  func testJoinerInviteTimeoutStaysBrowsing() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    session.testing_configure(
+      role: .joiner,
+      state: nil,
+      joinStatus: .connecting(to: "HostPhone")
+    )
+    session.testing_peerChange(named: "HostPhone", state: .notConnected)
+    XCTAssertEqual(session.role, .joiner)
+    XCTAssertNil(session.state)
+    guard case .failed(let message) = session.joinStatus else {
+      return XCTFail("Expected join failure, got \(session.joinStatus)")
+    }
+    XCTAssertTrue(message.contains("HostPhone"))
+  }
+
+  func testHostDisconnectShowsDepartureBanner() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    session.testing_configure(
+      role: .host,
+      state: lobbyState(),
+      peerDeviceIds: ["JoinerPhone": "joiner"],
+      messageTransport: recorder
+    )
+    session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    XCTAssertEqual(session.statusBanner, "Joiner left the lobby")
   }
 
   func testHostLeaveBroadcastsSessionEnded() throws {

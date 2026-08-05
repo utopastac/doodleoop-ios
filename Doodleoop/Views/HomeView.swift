@@ -153,6 +153,14 @@ struct HomeView: View {
         .pageHorizontalPadding()
         .gridBand()
 
+        Text("Nearby phones on the same Wi‑Fi, with Local Network allowed.")
+          .themeText(.caption)
+          .foregroundStyle(Theme.Text.tertiary)
+          .multilineTextAlignment(.center)
+          .frame(maxWidth: .infinity)
+          .pageHorizontalPadding()
+          .padding(.top, Theme.Spacing.s3)
+
         Spacer(minLength: Theme.Spacing.s5)
 
         // Rules + history + settings

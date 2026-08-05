@@ -274,20 +274,41 @@ struct LobbyView: View {
 
   private var joinerBrowsing: some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
-      if session.discoveredPeers.isEmpty {
-        ProgressView("Looking for games…")
+      switch session.joinStatus {
+      case .connecting(let name):
+        ProgressView("Connecting to \(name)…")
           .tint(Theme.Accent.default)
-      } else {
-        Text("Nearby games")
-          .themeText(.bodyStrong)
-          .foregroundStyle(Theme.Text.primary)
-          .textCase(.uppercase)
+      case .failed(let message):
+        Text(message)
+          .themeText(.caption)
+          .foregroundStyle(Theme.Text.secondary)
+        Button(DoodleLabel.bracketed("Keep looking")) {
+          session.dismissJoinFailure()
+        }
+        .doodleButton(.secondary)
+      case .browsing, .idle:
+        if session.discoveredPeers.isEmpty {
+          ProgressView("Looking for games…")
+            .tint(Theme.Accent.default)
+          Text("Phones need to be nearby with Local Network on for Doodleoop.")
+            .themeText(.caption)
+            .foregroundStyle(Theme.Text.tertiary)
+        } else {
+          Text("Nearby games")
+            .themeText(.bodyStrong)
+            .foregroundStyle(Theme.Text.primary)
+            .textCase(.uppercase)
 
-        ForEach(session.discoveredPeers, id: \.displayName) { peer in
-          Button(peer.displayName) {
-            session.join(peer)
+          ForEach(session.discoveredPeers, id: \.displayName) { peer in
+            Button(peer.displayName) {
+              session.join(peer)
+            }
+            .doodleButton(.secondary)
+            .disabled({
+              if case .connecting = session.joinStatus { return true }
+              return false
+            }())
           }
-          .doodleButton(.secondary)
         }
       }
     }
