@@ -60,7 +60,8 @@ struct LobbyView: View {
         },
         onCancel: { showCategorySheet = false }
       )
-      .presentationDetents([.medium])
+      .presentationDetents([.medium, .large])
+      .presentationDragIndicator(.visible)
     }
   }
 
@@ -328,8 +329,9 @@ struct LobbyView: View {
 
 // MARK: - Category prompt (host starts round)
 
-private struct CategoryPromptSheet: View {
+struct CategoryPromptSheet: View {
   @Binding var category: String
+  var startTitle: String = "Start game"
   var onStart: () -> Void
   var onCancel: () -> Void
 
@@ -339,7 +341,7 @@ private struct CategoryPromptSheet: View {
 
   var body: some View {
     NavigationStack {
-      VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
+      VStack(alignment: .leading, spacing: Theme.Spacing.s4) {
         Text("What are we drawing?")
           .themeText(.heading)
           .foregroundStyle(Theme.Text.primary)
@@ -357,9 +359,24 @@ private struct CategoryPromptSheet: View {
           )
           .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
 
-        Spacer(minLength: 0)
+        Button(DoodleLabel.bracketed("Surprise me")) {
+          category = RoundCategories.random(excluding: category)
+        }
+        .doodleButton(.secondary)
 
-        Button(DoodleLabel.bracketed("Start game")) {
+        Text("Or pick one")
+          .themeText(.overline)
+          .foregroundStyle(Theme.Text.secondary)
+
+        ScrollView {
+          LazyVStack(spacing: Theme.Spacing.s2) {
+            ForEach(RoundCategories.all, id: \.self) { suggestion in
+              categoryRow(suggestion)
+            }
+          }
+        }
+
+        Button(DoodleLabel.bracketed(startTitle)) {
           onStart()
         }
         .doodleButton(.primary)
@@ -376,5 +393,26 @@ private struct CategoryPromptSheet: View {
         }
       }
     }
+  }
+
+  private func categoryRow(_ suggestion: String) -> some View {
+    let isSelected = trimmed.caseInsensitiveCompare(suggestion) == .orderedSame
+    return Button {
+      category = suggestion
+    } label: {
+      Text(suggestion)
+        .themeText(.label)
+        .foregroundStyle(isSelected ? Theme.Paper.white : Theme.Text.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, Theme.Spacing.s3)
+        .padding(.vertical, Theme.Spacing.s3)
+        .background(isSelected ? Theme.Ink.deep : Theme.Paper.white)
+        .overlay(
+          RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular)
+            .stroke(Theme.Stroke.subtle, lineWidth: Theme.Borders.thin)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    }
+    .buttonStyle(.plain)
   }
 }

@@ -295,14 +295,57 @@ enum StrokeRenderer {
     liveStroke: Stroke? = nil,
     in context: inout GraphicsContext,
     size: CGSize,
-    widthScale: CGFloat = 1
+    widthScale: CGFloat = 1,
+    progress: Double = 1
   ) {
-    for stroke in drawing.strokes {
-      draw(stroke, in: &context, size: size, widthScale: widthScale, live: false)
+    if progress < 1 {
+      drawPartial(drawing, in: &context, size: size, widthScale: widthScale, progress: progress)
+    } else {
+      for stroke in drawing.strokes {
+        draw(stroke, in: &context, size: size, widthScale: widthScale, live: false)
+      }
     }
     if let liveStroke {
       draw(liveStroke, in: &context, size: size, widthScale: widthScale, live: true)
     }
+  }
+
+  /// Replays strokes in the order they were made, up to `progress` (0…1).
+  private static func drawPartial(
+    _ drawing: Drawing,
+    in context: inout GraphicsContext,
+    size: CGSize,
+    widthScale: CGFloat,
+    progress: Double
+  ) {
+    let total = sampleCount(of: drawing)
+    guard total > 0 else { return }
+
+    var budget = Int((Double(total) * min(max(progress, 0), 1)).rounded())
+    for stroke in drawing.strokes {
+      guard budget > 0 else { return }
+      if budget >= stroke.points.count {
+        budget -= stroke.points.count
+        draw(stroke, in: &context, size: size, widthScale: widthScale, live: false)
+      } else {
+        var partial = stroke
+        partial.points = Array(stroke.points.prefix(budget))
+        budget = 0
+        // `live` matches how an in-flight stroke tapers while the finger is still down.
+        draw(partial, in: &context, size: size, widthScale: widthScale, live: true)
+      }
+    }
+  }
+
+  /// Points are sampled as the finger moves, so a point budget paces a replay
+  /// close to the speed the drawing was made at.
+  static func sampleCount(of drawing: Drawing) -> Int {
+    drawing.strokes.reduce(0) { $0 + $1.points.count }
+  }
+
+  /// Replay length for `drawing`, clamped so a scribble still reads and an epic doesn't stall the reveal.
+  static func replayDuration(for drawing: Drawing) -> Double {
+    min(2.6, max(0.45, Double(sampleCount(of: drawing)) / 260))
   }
 
   /// Rasterize paper + committed ink once so live drawing doesn’t redraw everything each frame.

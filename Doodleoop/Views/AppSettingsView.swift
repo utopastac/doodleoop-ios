@@ -3,9 +3,17 @@ import SwiftUI
 struct AppSettingsView: View {
   @Environment(\.dismiss) private var dismiss
   @AppStorage(PaperStyle.storageKey) private var paperStyleRaw = PaperStyle.plain.rawValue
+  @AppStorage(RevealStyle.storageKey) private var revealStyleRaw = RevealStyle.fade.rawValue
 
   private var selectedStyle: PaperStyle {
     PaperStyle(rawValue: paperStyleRaw) ?? .plain
+  }
+
+  private var revealStyle: Binding<RevealStyle> {
+    Binding(
+      get: { RevealStyle(rawValue: revealStyleRaw) ?? .fade },
+      set: { revealStyleRaw = $0.rawValue }
+    )
   }
 
   private let columns = [
@@ -30,6 +38,21 @@ struct AppSettingsView: View {
               paperOption(style)
             }
           }
+
+          Text("Reveal")
+            .themeText(.overline)
+            .foregroundStyle(Theme.Text.secondary)
+            .padding(.top, Theme.Spacing.s3)
+
+          Text("How each drawing arrives during the reveal — finished, or replayed stroke by stroke.")
+            .themeText(.caption)
+            .foregroundStyle(Theme.Text.tertiary)
+
+          DoodleSegmentedControl(
+            options: RevealStyle.allCases,
+            selection: revealStyle,
+            title: \.displayName
+          )
         }
         .pageHorizontalPadding()
         .padding(.top, Theme.Spacing.s4)

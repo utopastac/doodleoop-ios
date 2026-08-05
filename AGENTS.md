@@ -41,13 +41,16 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 
 ## Leaving a game
 
-- In-game screens (host/joiner) show a global **leave** control via `.leaveGameChrome()` on `ContentView`’s game flow — Phosphor `sign-out`, top trailing. Lobby lays the same control out in its own 40pt toolbar band instead of the overlay.
+- In-game screens (host/joiner) show a global **leave** control via `.leaveGameChrome()` on `ContentView`’s game flow — Phosphor `sign-out`, top trailing. Lobby, reveal and round-over lay the same control out in their own 40pt toolbar band instead of the overlay.
 - Confirm with the dialog in `LeaveGameButton` before calling `session.leaveGame()`.
 - Top-row content that sits on the trailing edge (drawing / guessing / reveal) should pad with `Theme.Sizing.leaveButtonReserve` so it doesn’t collide with the chrome.
 
 ## Drawing canvas
 
 - The in-game drawing surface stays a **square** (`aspectRatio(1)`). Do not stretch it to fill arbitrary aspect ratios.
+- Read-only drawings use `ZoomableDrawingView` (guessing / reveal / history) — an Instagram-style **peek zoom**: pinch to magnify, release springs back to 100%. `ReadOnlyDrawingView` is the plain, non-interactive variant used for thumbnails.
+- Peek zoom keeps everything in `@GestureState` so it resets itself when the fingers lift — don't reintroduce persistent zoom/pan `@State`.
+- Stroke replay (reveal `Draw` setting) is applied to the `GraphicsContext` inside `Canvas`, so a partly-drawn stroke tapers like a live one.
 
 ## Game history
 

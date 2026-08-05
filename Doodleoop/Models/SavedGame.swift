@@ -47,6 +47,39 @@ struct SavedGame: Identifiable, Codable, Equatable {
     players.map(\.name).joined(separator: ", ")
   }
 
+  /// First drawing in the loop — used as the history-row thumbnail.
+  var previewDrawing: Drawing? {
+    for pad in pads {
+      for step in pad.steps {
+        if case .drawing(_, let drawing) = step {
+          return drawing
+        }
+      }
+    }
+    return nil
+  }
+
+  /// Figma history timestamp: `5 Aug 2026 // 2.40pm` (uppercased in the row).
+  var historyTimestamp: String {
+    "\(Self.historyDayFormatter.string(from: completedAt)) // \(Self.historyTimeFormatter.string(from: completedAt))"
+  }
+
+  private static let historyDayFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_GB")
+    formatter.dateFormat = "d MMM yyyy"
+    return formatter
+  }()
+
+  private static let historyTimeFormatter: DateFormatter = {
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "h.mma"
+    formatter.amSymbol = "am"
+    formatter.pmSymbol = "pm"
+    return formatter
+  }()
+
   static func makeContentKey(category: String, players: [Player], pads: [SketchPad]) -> String {
     struct Snapshot: Encodable {
       let category: String

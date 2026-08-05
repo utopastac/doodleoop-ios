@@ -37,11 +37,11 @@ struct HomeView: View {
         (session.hasSavedAvatar ? Theme.Background.broadsheet : Theme.Paper.tan)
           .ignoresSafeArea()
       }
+      .navigationDestination(isPresented: $showHistory) {
+        GameHistoryView()
+      }
       .sheet(isPresented: $showSettings) {
         AppSettingsView()
-      }
-      .sheet(isPresented: $showHistory) {
-        GameHistoryView()
       }
       .sheet(isPresented: $showViewPreviews, onDismiss: {
         if let pendingPreview {

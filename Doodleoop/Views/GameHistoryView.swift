@@ -4,28 +4,49 @@ struct GameHistoryView: View {
   @EnvironmentObject private var history: GameHistoryStore
   @Environment(\.dismiss) private var dismiss
 
+  private let thumbnailSize: CGFloat = Theme.Spacing.s12 + Theme.Spacing.s2 // 104
+
   var body: some View {
-    NavigationStack {
-      Group {
-        if history.games.isEmpty {
-          emptyState
-        } else {
-          listContent
-        }
-      }
-      .frame(maxWidth: .infinity, maxHeight: .infinity)
-      .paperBackground()
-      .pageMargins()
-      .navigationTitle("History")
-      .navigationBarTitleDisplayMode(.inline)
-      .toolbar {
-        ToolbarItem(placement: .cancellationAction) {
-          Button("Done") { dismiss() }
-            .themeText(.label)
-            .foregroundStyle(Theme.Accent.default)
-        }
+    VStack(spacing: 0) {
+      header
+        .gridBand()
+
+      if history.games.isEmpty {
+        emptyState
+      } else {
+        listContent
       }
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .paperBackground()
+    .pageMargins()
+    .toolbar(.hidden, for: .navigationBar)
+  }
+
+  /// Title + `[ DONE ]` in a 40pt band between horizontal rails (Figma).
+  private var header: some View {
+    HStack(spacing: Theme.Spacing.s2) {
+      Text("History")
+        .themeText(.body)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+
+      Button {
+        dismiss()
+      } label: {
+        Text(DoodleLabel.bracketed("Done"))
+          .themeText(.button)
+          .foregroundStyle(Theme.Paper.tan)
+          .padding(.horizontal, Theme.Spacing.s5)
+          .frame(height: Theme.Sizing.inputHeight)
+          .background(Theme.Ink.deep)
+          .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+      }
+      .buttonStyle(.plain)
+    }
+    .pageHorizontalPadding()
+    .frame(height: Theme.Sizing.inputHeight)
   }
 
   private var emptyState: some View {
@@ -46,33 +67,136 @@ struct GameHistoryView: View {
   private var listContent: some View {
     List {
       ForEach(history.games) { game in
-        NavigationLink {
-          SavedGameDetailView(game: game)
-        } label: {
-          VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
-            Text(game.category.isEmpty ? "Untitled loop" : game.category)
-              .themeText(.bodyStrong)
-              .foregroundStyle(Theme.Text.primary)
-            Text(game.playerNamesSummary)
-              .themeText(.caption)
-              .foregroundStyle(Theme.Text.secondary)
-              .lineLimit(1)
-            Text(game.completedAt.formatted(date: .abbreviated, time: .shortened))
-              .themeText(.caption)
-              .foregroundStyle(Theme.Text.tertiary)
+        ZStack(alignment: .leading) {
+          NavigationLink {
+            SavedGameDetailView(game: game)
+          } label: {
+            EmptyView()
           }
-          .padding(.vertical, Theme.Spacing.s1)
+          .opacity(0)
+
+          HistoryItemRow(game: game, thumbnailSize: thumbnailSize)
         }
-        .listRowBackground(Theme.Paper.white)
-      }
-      .onDelete { offsets in
-        for index in offsets {
-          history.delete(history.games[index])
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+          Button(role: .destructive) {
+            history.delete(game)
+          } label: {
+            Label("Delete", systemImage: "trash")
+          }
         }
       }
     }
     .listStyle(.plain)
     .scrollContentBackground(.hidden)
+    .contentMargins(.top, Theme.Spacing.s6, for: .scrollContent)
+  }
+}
+
+/// One history row: thumbnail + category / players / timestamp (Figma `history item`).
+private struct HistoryItemRow: View {
+  let game: SavedGame
+  let thumbnailSize: CGFloat
+
+  var body: some View {
+    VStack(spacing: 0) {
+      HStack(alignment: .top, spacing: Theme.Spacing.s2) {
+        thumbnail
+          .frame(width: thumbnailSize, height: thumbnailSize)
+
+        VStack(alignment: .leading, spacing: 0) {
+          VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
+            Text(game.category.isEmpty ? "Untitled loop" : game.category)
+              .textCase(.uppercase)
+              .font(.custom(Theme.FontFamily.monoBold, size: Theme.FontSize.footnote))
+              .tracking(Theme.FontSize.footnote * 0.07)
+              .foregroundStyle(Theme.Text.primary)
+              .lineLimit(2)
+
+            Text(game.playerNamesSummary)
+              .textCase(.uppercase)
+              .themeText(.overline)
+              .foregroundStyle(Theme.Ink.medium)
+              .lineLimit(2)
+          }
+
+          Spacer(minLength: Theme.Spacing.s2)
+
+          Text(game.historyTimestamp)
+            .textCase(.uppercase)
+            .themeText(.overline)
+            .foregroundStyle(Theme.Text.tertiary)
+        }
+        .padding(.vertical, Theme.Spacing.s3)
+        .frame(maxWidth: .infinity, minHeight: thumbnailSize, alignment: .leading)
+      }
+      .background(Theme.Paper.white)
+      .pageHorizontalPadding()
+
+      GridLine(axis: .horizontal)
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  @ViewBuilder
+  private var thumbnail: some View {
+    if let drawing = game.previewDrawing {
+      ReadOnlyDrawingView(drawing: drawing, scalesStrokeWidth: true, showsPaper: false)
+        .allowsHitTesting(false)
+    } else {
+      Theme.Paper.white
+    }
+  }
+}
+
+// MARK: - Shared chrome
+
+/// Paper-white 40×40 back control (Figma `Icon Button`, secondary).
+private struct HistoryBackButton: View {
+  @Environment(\.dismiss) private var dismiss
+
+  var body: some View {
+    Button {
+      dismiss()
+    } label: {
+      PhosphorIcon.arrowLeft.image
+        .resizable()
+        .renderingMode(.template)
+        .scaledToFit()
+        .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
+        .foregroundStyle(Theme.Ink.deep)
+        .frame(width: Theme.Sizing.inputHeight, height: Theme.Sizing.inputHeight)
+        .background(Theme.Paper.white)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.xs, style: .circular))
+    }
+    .buttonStyle(.plain)
+    .accessibilityLabel("Back")
+  }
+}
+
+/// Back control (+ optional title) in a 40pt band between horizontal rails.
+private struct HistoryTopBar: View {
+  var title: String?
+
+  var body: some View {
+    HStack(spacing: Theme.Spacing.s3) {
+      HistoryBackButton()
+
+      if let title {
+        Text(title)
+          .themeText(.body)
+          .foregroundStyle(Theme.Text.primary)
+          .lineLimit(1)
+          .accessibilityAddTraits(.isHeader)
+      }
+
+      Spacer(minLength: 0)
+    }
+    .pageHorizontalPadding()
+    .frame(height: Theme.Sizing.inputHeight)
+    .gridBand()
   }
 }
 
@@ -98,96 +222,141 @@ struct SavedGameDetailView: View {
   @State private var focusedDrawing: PadDrawingItem?
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
-        header
+    VStack(spacing: 0) {
+      HistoryTopBar()
 
-        DoodleSegmentedControl(
-          options: SavedGameBrowseMode.allCases,
-          selection: $mode,
-          title: \.title
-        )
+      header
+        .pageHorizontalPadding()
 
+      GridLine(axis: .horizontal)
+
+      DoodleSegmentedControl(
+        options: SavedGameBrowseMode.allCases,
+        selection: $mode,
+        title: \.title
+      )
+      .pageHorizontalPadding()
+
+      ScrollView {
         switch mode {
         case .books:
-          booksList
+          VStack(spacing: 0) {
+            ForEach(game.pads) { pad in
+              NavigationLink {
+                SavedPadView(game: game, pad: pad)
+              } label: {
+                HistoryPadRow(game: game, pad: pad)
+              }
+              .buttonStyle(.plain)
+            }
+          }
         case .gallery:
           DrawingGridView(items: game.allDrawings) { item in
             focusedDrawing = item
           }
+          .pageHorizontalPadding()
         }
       }
-      .pageHorizontalPadding()
-      .padding(.top, Theme.Spacing.s4)
-      .padding(.bottom, Theme.Spacing.s7)
+      .contentMargins(.top, Theme.Spacing.s6, for: .scrollContent)
+      .contentMargins(.bottom, Theme.Spacing.s7, for: .scrollContent)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .paperBackground()
     .pageMargins()
-    .navigationTitle("Loop")
-    .navigationBarTitleDisplayMode(.inline)
+    .toolbar(.hidden, for: .navigationBar)
     .sheet(item: $focusedDrawing) { item in
       DrawingFocusSheet(game: game, item: item)
     }
   }
 
+  /// Category over timestamp — Figma gives the title an 80pt cell.
   private var header: some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
+    VStack(alignment: .leading, spacing: 0) {
       Text(game.category.isEmpty ? "Untitled loop" : game.category)
         .themeText(.heading)
         .foregroundStyle(Theme.Text.primary)
-      Text(game.completedAt.formatted(date: .abbreviated, time: .shortened))
+        .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s11, alignment: .leading)
+
+      Text(game.historyTimestamp)
+        .textCase(.uppercase)
         .themeText(.caption)
-        .foregroundStyle(Theme.Text.tertiary)
-      Text(game.playerNamesSummary)
-        .themeText(.label)
-        .foregroundStyle(Theme.Text.secondary)
+        .foregroundStyle(Theme.Ink.medium)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, Theme.Spacing.s4)
     }
   }
+}
 
-  private var booksList: some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
-      Text("Drawing books")
-        .themeText(.overline)
-        .foregroundStyle(Theme.Text.secondary)
+/// One pad row: starter avatar + name, with a 2×2 peek of the pad's drawings.
+private struct HistoryPadRow: View {
+  let game: SavedGame
+  let pad: SketchPad
 
-      ForEach(game.pads) { pad in
-        NavigationLink {
-          SavedPadView(game: game, pad: pad)
-        } label: {
-          HStack(spacing: Theme.Spacing.s3) {
-            if let starter = game.player(id: pad.id) {
-              AvatarBadge(drawing: starter.avatar, size: Theme.Sizing.avatarMd)
-              VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
-                Text("\(starter.name)'s pad")
-                  .themeText(.bodyStrong)
-                  .foregroundStyle(Theme.Text.primary)
-                Text("\(contributionCount(pad)) steps")
-                  .themeText(.caption)
-                  .foregroundStyle(Theme.Text.secondary)
-              }
-            } else {
-              Text("Pad")
-                .themeText(.bodyStrong)
-                .foregroundStyle(Theme.Text.primary)
-            }
-            Spacer()
-            Image(systemName: "chevron.right")
-              .font(.system(size: Theme.Sizing.iconSm, weight: .semibold))
-              .foregroundStyle(Theme.Text.tertiary)
-          }
-          .padding(Theme.Spacing.s4)
-          .paperSurface(in: RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+  private let rowHeight: CGFloat = Theme.Spacing.s12 + Theme.Spacing.s2 // 104
+  private let avatarSize: CGFloat = Theme.Spacing.s10 // 64
+  private let peekSize: CGFloat = (Theme.Spacing.s12 + Theme.Spacing.s2) / 2 // 52
+
+  private var starter: Player? { game.player(id: pad.id) }
+
+  private var peekDrawings: [PadDrawingItem] {
+    Array(PadDrawingItem.items(from: pad).prefix(4))
+  }
+
+  var body: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: Theme.Spacing.s2) {
+        HStack(spacing: Theme.Spacing.s3) {
+          AvatarBadge(drawing: starter?.avatar ?? .empty, size: avatarSize)
+
+          Text(starter?.name ?? "Pad")
+            .themeText(.body)
+            .foregroundStyle(Theme.Text.primary)
+            .lineLimit(1)
         }
-        .buttonStyle(.plain)
+        .padding(.vertical, Theme.Spacing.s3)
+
+        Spacer(minLength: Theme.Spacing.s2)
+
+        peekGrid
+      }
+      .frame(height: rowHeight)
+      .background(Theme.Paper.white)
+      .pageHorizontalPadding()
+
+      GridLine(axis: .horizontal)
+    }
+    .accessibilityElement(children: .combine)
+  }
+
+  /// 2×2 block of 52pt thumbnails, flush to the trailing rail.
+  private var peekGrid: some View {
+    VStack(spacing: 0) {
+      HStack(spacing: 0) {
+        peekTile(0)
+        peekTile(1)
+      }
+      HStack(spacing: 0) {
+        peekTile(2)
+        peekTile(3)
       }
     }
+    .frame(width: peekSize * 2, height: peekSize * 2)
   }
 
-  private func contributionCount(_ pad: SketchPad) -> Int {
-    pad.steps.filter {
-      if case .prompt = $0 { return false }
-      return true
-    }.count
+  @ViewBuilder
+  private func peekTile(_ index: Int) -> some View {
+    if index < peekDrawings.count {
+      ReadOnlyDrawingView(
+        drawing: peekDrawings[index].drawing,
+        scalesStrokeWidth: true,
+        showsPaper: false
+      )
+      .frame(width: peekSize, height: peekSize)
+      .allowsHitTesting(false)
+    } else {
+      Theme.Paper.white
+        .frame(width: peekSize, height: peekSize)
+    }
   }
 }
 
@@ -222,18 +391,20 @@ struct SavedPadView: View {
   }
 
   var body: some View {
-    ScrollView {
-      VStack(alignment: .leading, spacing: Theme.Spacing.s5) {
-        if !game.category.isEmpty {
-          labeled("Category", game.category)
-        }
+    VStack(spacing: 0) {
+      HistoryTopBar(title: "\(starterName)’s pad")
 
-        DoodleSegmentedControl(
-          options: PadBookLayout.allCases,
-          selection: $layout,
-          title: \.title
-        )
+      DoodleSegmentedControl(
+        options: PadBookLayout.allCases,
+        selection: $layout,
+        title: \.title
+      )
+      .pageHorizontalPadding()
+      .padding(.top, Theme.Spacing.s4)
 
+      GridLine(axis: .horizontal)
+
+      ScrollView {
         switch layout {
         case .story:
           storyContent
@@ -244,13 +415,13 @@ struct SavedPadView: View {
         }
       }
       .pageHorizontalPadding()
-      .padding(.top, Theme.Spacing.s4)
-      .padding(.bottom, Theme.Spacing.s7)
+      .contentMargins(.top, Theme.Spacing.s4, for: .scrollContent)
+      .contentMargins(.bottom, Theme.Spacing.s7, for: .scrollContent)
     }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
     .paperBackground()
     .pageMargins()
-    .navigationTitle("\(starterName)'s pad")
-    .navigationBarTitleDisplayMode(.inline)
+    .toolbar(.hidden, for: .navigationBar)
     .sheet(item: $focusedDrawing) { item in
       DrawingFocusSheet(game: game, item: item)
     }
@@ -258,37 +429,59 @@ struct SavedPadView: View {
 
   @ViewBuilder
   private var storyContent: some View {
-    ForEach(Array(pad.steps.enumerated()), id: \.offset) { _, step in
-      stepView(step)
+    // The category heads the loop screen; skip the pad's prompt step here.
+    let contributions = pad.steps.filter {
+      if case .prompt = $0 { return false }
+      return true
+    }
+    VStack(spacing: 0) {
+      ForEach(Array(contributions.enumerated()), id: \.offset) { index, step in
+        // First drawing after the category sits unlabeled (same as live reveal).
+        stepView(step, showDrawingLabel: index > 0)
+        GridLine(axis: .horizontal)
+      }
     }
   }
 
   @ViewBuilder
-  private func stepView(_ step: ChainStep) -> some View {
+  private func stepView(_ step: ChainStep, showDrawingLabel: Bool) -> some View {
     switch step {
     case .prompt(let text):
-      labeled("Category", text)
+      Text(text)
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s11, alignment: .leading)
+        .padding(.horizontal, Theme.Spacing.s2)
     case .drawing(let playerId, let drawing):
-      VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
-        Text(game.player(id: playerId)?.name ?? "Player")
-          .themeText(.bodyStrong)
-          .foregroundStyle(Theme.Text.primary)
-        ReadOnlyDrawingView(drawing: drawing)
+      let name = game.player(id: playerId)?.name ?? "Player"
+      VStack(alignment: .leading, spacing: 0) {
+        if showDrawingLabel {
+          Text("\(name)’s Drawing")
+            .textCase(.uppercase)
+            .themeText(.labelSmall)
+            .foregroundStyle(Theme.Text.primary)
+            .tracking(Theme.FontSize.footnote * 0.07)
+            .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s8, alignment: .leading)
+            .padding(.horizontal, Theme.Spacing.s2)
+        }
+        ZoomableDrawingView(drawing: drawing)
           .aspectRatio(1, contentMode: .fit)
+          .drawingPhotoExport(drawing)
       }
     case .guess(let playerId, let text):
-      labeled(game.player(id: playerId)?.name ?? "Player", text)
-    }
-  }
-
-  private func labeled(_ title: String, _ body: String) -> some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
-      Text(title)
-        .themeText(.caption)
-        .foregroundStyle(Theme.Accent.default)
-      Text(body)
-        .themeText(.subheading)
-        .foregroundStyle(Theme.Text.primary)
+      let name = game.player(id: playerId)?.name ?? "Player"
+      VStack(alignment: .leading, spacing: Theme.Spacing.s2) {
+        Text("\(name)’s Guess")
+          .textCase(.uppercase)
+          .themeText(.labelSmall)
+          .foregroundStyle(Theme.Text.primary)
+          .tracking(Theme.FontSize.footnote * 0.07)
+        Text(text)
+          .themeText(.heading)
+          .foregroundStyle(Theme.Text.primary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      .padding(Theme.Spacing.s2)
     }
   }
 }
@@ -329,14 +522,16 @@ extension SavedGame {
   }
 }
 
+/// Two flush columns of square drawings, divided by grid lines (Figma pad grid).
 private struct DrawingGridView: View {
   let items: [PadDrawingItem]
   var onSelect: (PadDrawingItem) -> Void
 
-  private let columns = [
-    GridItem(.flexible(), spacing: Theme.Spacing.s3),
-    GridItem(.flexible(), spacing: Theme.Spacing.s3),
-  ]
+  private var rows: [[PadDrawingItem]] {
+    stride(from: 0, to: items.count, by: 2).map { start in
+      Array(items[start..<min(start + 2, items.count)])
+    }
+  }
 
   var body: some View {
     if items.isEmpty {
@@ -345,24 +540,40 @@ private struct DrawingGridView: View {
         .foregroundStyle(Theme.Text.secondary)
         .frame(maxWidth: .infinity, alignment: .leading)
     } else {
-      LazyVGrid(columns: columns, spacing: Theme.Spacing.s3) {
-        ForEach(items) { item in
-          Button {
-            onSelect(item)
-          } label: {
-            ReadOnlyDrawingView(drawing: item.drawing)
-              .aspectRatio(1, contentMode: .fit)
-              .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous))
-              .overlay {
-                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                  .strokeBorder(Theme.Stroke.subtle, lineWidth: Theme.Borders.thin)
-              }
+      VStack(spacing: 0) {
+        ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
+          HStack(spacing: 0) {
+            tile(row.first)
+            GridLine(axis: .vertical)
+            tile(row.count > 1 ? row[1] : nil)
           }
-          .buttonStyle(.plain)
-          .accessibilityLabel("Drawing")
+
+          if index < rows.count - 1 {
+            GridLine(axis: .horizontal)
+          }
         }
       }
     }
+  }
+
+  @ViewBuilder
+  private func tile(_ item: PadDrawingItem?) -> some View {
+    Group {
+      if let item {
+        Button {
+          onSelect(item)
+        } label: {
+          ReadOnlyDrawingView(drawing: item.drawing, scalesStrokeWidth: true)
+        }
+        .buttonStyle(.plain)
+        .drawingPhotoExport(item.drawing)
+        .accessibilityLabel("Drawing")
+      } else {
+        Theme.Paper.white
+      }
+    }
+    .frame(maxWidth: .infinity)
+    .aspectRatio(1, contentMode: .fit)
   }
 }
 
@@ -391,8 +602,9 @@ private struct DrawingFocusSheet: View {
             .foregroundStyle(Theme.Text.secondary)
         }
 
-        ReadOnlyDrawingView(drawing: item.drawing)
+        ZoomableDrawingView(drawing: item.drawing)
           .aspectRatio(1, contentMode: .fit)
+          .drawingPhotoExport(item.drawing)
 
         Spacer(minLength: 0)
       }

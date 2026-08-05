@@ -32,7 +32,7 @@ struct GuessingView: View {
       if let drawing {
         GeometryReader { geo in
           let side = min(geo.size.width, geo.size.height)
-          ReadOnlyDrawingView(drawing: drawing)
+          ZoomableDrawingView(drawing: drawing)
             .frame(width: side, height: side)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -87,13 +87,100 @@ struct GuessingView: View {
 }
 
 struct ReadOnlyDrawingView: View {
+  /// Width the strokes were authored against — the in-game square canvas.
+  static let referenceWidth: CGFloat = 354
+
   let drawing: Drawing
+  /// 0…1 — how much of the drawing has been replayed, stroke by stroke.
+  var progress: Double = 1
+  /// Thins the ink in proportion to the canvas, so thumbnails don't read as marker pen.
+  var scalesStrokeWidth: Bool = false
+  /// When false the strokes sit straight on the surrounding surface (rows, tiles).
+  var showsPaper: Bool = true
+
+  var body: some View {
+    let canvas = StrokeReplayCanvas(
+      drawing: drawing,
+      progress: progress,
+      scalesStrokeWidth: scalesStrokeWidth
+    )
+    return Group {
+      if showsPaper {
+        canvas.paperSurface(in: Rectangle())
+      } else {
+        canvas
+      }
+    }
+  }
+}
+
+/// `Animatable` so SwiftUI interpolates `progress` and repaints the canvas each frame.
+private struct StrokeReplayCanvas: View, Animatable {
+  var drawing: Drawing
+  var progress: Double
+  var scalesStrokeWidth: Bool = false
+
+  nonisolated var animatableData: Double {
+    get { progress }
+    set { progress = newValue }
+  }
 
   var body: some View {
     Canvas { context, size in
-      StrokeRenderer.drawDrawing(drawing, in: &context, size: size)
+      let widthScale = scalesStrokeWidth
+        ? size.width / ReadOnlyDrawingView.referenceWidth
+        : 1
+      StrokeRenderer.drawDrawing(
+        drawing,
+        in: &context,
+        size: size,
+        widthScale: widthScale,
+        progress: progress
+      )
     }
-    .paperSurface(in: Rectangle())
+  }
+}
+
+/// Instagram-style peek zoom: pinch to magnify in place, let go and it springs back.
+///
+/// Everything lives in `@GestureState`, which SwiftUI resets on its own when the
+/// fingers lift — so the zoom has no state that can be left stuck.
+struct ZoomableDrawingView: View {
+  let drawing: Drawing
+  var progress: Double = 1
+
+  private static let springBack = Transaction(animation: Theme.Motion.reveal)
+
+  @GestureState(resetTransaction: springBack) private var zoom: CGFloat = 1
+  @GestureState(resetTransaction: springBack) private var anchor: UnitPoint = .center
+  @GestureState(resetTransaction: springBack) private var pan: CGSize = .zero
+
+  var body: some View {
+    ReadOnlyDrawingView(drawing: drawing, progress: progress)
+      .scaleEffect(zoom, anchor: anchor)
+      .offset(pan)
+      // Lifts the drawing above neighbouring steps while it's magnified.
+      .zIndex(zoom > 1 ? 1 : 0)
+      .simultaneousGesture(peekZoom)
+  }
+
+  private var peekZoom: some Gesture {
+    MagnifyGesture()
+      .updating($zoom) { value, state, _ in
+        state = max(1, value.magnification)
+      }
+      .updating($anchor) { value, state, _ in
+        state = value.startAnchor
+      }
+      .simultaneously(
+        with: DragGesture(minimumDistance: 0)
+          .updating($pan) { value, state, _ in
+            // Follows the fingers only once a pinch is under way, so a plain
+            // swipe still scrolls the page it sits in.
+            guard zoom > 1 else { return }
+            state = value.translation
+          }
+      )
   }
 }
 

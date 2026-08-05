@@ -44,7 +44,7 @@ struct LeaveGameButton: View {
 }
 
 /// Pins a leave control to the top-trailing corner of in-game screens
-/// (drawing / guessing / reveal). Lobby owns its own leave toolbar band.
+/// (drawing / guessing). Lobby, reveal and round-over own an inline leave band.
 struct LeaveGameChrome: ViewModifier {
   var isEnabled: Bool = true
 
@@ -60,7 +60,7 @@ struct LeaveGameChrome: ViewModifier {
 }
 
 extension View {
-  /// Always-on leave control for round / reveal screens.
+  /// Overlay leave control for drawing / guessing.
   func leaveGameChrome(isEnabled: Bool = true) -> some View {
     modifier(LeaveGameChrome(isEnabled: isEnabled))
   }

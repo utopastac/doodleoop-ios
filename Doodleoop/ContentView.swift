@@ -44,6 +44,12 @@ struct ContentView: View {
     session.state?.phase == .lobby || (session.role == .joiner && session.state == nil)
   }
 
+  /// Lobby, reveal and round-over own a 40pt leave band; drawing / guessing use overlay chrome.
+  private var usesInlineLeave: Bool {
+    guard !isLobbyPhase else { return true }
+    return session.state?.phase == .reveal || session.state?.phase == .roundOver
+  }
+
   @ViewBuilder
   private var gameFlow: some View {
     // Leave chrome sits outside the phase swap so it doesn't slide with the pad.
@@ -76,8 +82,7 @@ struct ContentView: View {
         }
       }
     }
-    // Lobby lays out leave in its own toolbar band; other phases overlay.
-    .leaveGameChrome(isEnabled: !isLobbyPhase)
+    .leaveGameChrome(isEnabled: !usesInlineLeave)
   }
 
   /// Pads pass left: outgoing exits leading, incoming enters from trailing.

@@ -27,12 +27,14 @@
 		8718E0FDBEC7EC93635F044C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C197988DB66529732A5329B /* ContentView.swift */; };
 		8A25E4D660BC1DDCD0C8F329 /* GameHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48DF8219F72A2E93F05999E0 /* GameHistoryView.swift */; };
 		98625166CED6AF17FBA06EC3 /* DrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */; };
+		DA9C9278F15F4909AF7E6DA3 /* DrawingPhotoExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FC799501F9E4E4C8A77BAEA /* DrawingPhotoExport.swift */; };
 		9F109CB5DE756C1EE11BA0D2 /* PhosphorIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2378A75C5C0F0A26B854DF8 /* PhosphorIcon.swift */; };
 		B6446F3B4BB9E8FBF99BE7B4 /* SpaceMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0F67899542B16CE6EA5FD931 /* SpaceMono-Regular.ttf */; };
 		C55F33AF99525142C83BE543 /* LeaveGameButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE596438816237960027FA3C /* LeaveGameButton.swift */; };
 		C831A5EB439876C70438E014 /* GameHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCAE13A6ED5271316121BF0 /* GameHistoryStore.swift */; };
 		D06AFC31EE87A5FACAFBEC42 /* ViewPreviewMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC10F2CA41DE3E9D91A872FB /* ViewPreviewMenuView.swift */; };
 		D3E0206FAC6A592C839B35B4 /* SavedGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9814F03113CA9077C506D9CB /* SavedGame.swift */; };
+		3CC6B9E2C0A04EC2808B81FE /* RoundCategories.swift in Sources */ = {isa = PBXBuildFile; fileRef = E72F8A840D6748F19E3EDE99 /* RoundCategories.swift */; };
 		ED9D38960689EA53059435E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8E43D291F3A094221A19E7 /* Theme.swift */; };
 		F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */; };
 		F94E1265431FF8445488A1E6 /* PreviewStateFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C6613C1182620482C33637 /* PreviewStateFactory.swift */; };
@@ -56,6 +58,7 @@
 		0AA9919AF1010F8FE1C0D385 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		0C197988DB66529732A5329B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0F67899542B16CE6EA5FD931 /* SpaceMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "SpaceMono-Regular.ttf"; sourceTree = "<group>"; };
+		0FC799501F9E4E4C8A77BAEA /* DrawingPhotoExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingPhotoExport.swift; sourceTree = "<group>"; };
 		3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsView.swift; sourceTree = "<group>"; };
 		35E271117664FEFD32A46F15 /* GameSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSettingsView.swift; sourceTree = "<group>"; };
 		3C8E43D291F3A094221A19E7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
@@ -74,6 +77,7 @@
 		8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameModels.swift; sourceTree = "<group>"; };
 		92FDA77B5436CAA55ADCBC13 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		9814F03113CA9077C506D9CB /* SavedGame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedGame.swift; sourceTree = "<group>"; };
+		E72F8A840D6748F19E3EDE99 /* RoundCategories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundCategories.swift; sourceTree = "<group>"; };
 		A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
 		ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessingView.swift; sourceTree = "<group>"; };
 		BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -165,6 +169,7 @@
 				85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */,
 				5CCAE13A6ED5271316121BF0 /* GameHistoryStore.swift */,
 				8A718FBB63C3D5EBC10F2E51 /* GameModels.swift */,
+				E72F8A840D6748F19E3EDE99 /* RoundCategories.swift */,
 				9814F03113CA9077C506D9CB /* SavedGame.swift */,
 			);
 			path = Models;
@@ -183,6 +188,7 @@
 			isa = PBXGroup;
 			children = (
 				3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */,
+				0FC799501F9E4E4C8A77BAEA /* DrawingPhotoExport.swift */,
 				FD1487CE8BC2D0C9DD510294 /* DrawingView.swift */,
 				48DF8219F72A2E93F05999E0 /* GameHistoryView.swift */,
 				35E271117664FEFD32A46F15 /* GameSettingsView.swift */,
@@ -290,6 +296,7 @@
 				607FB4669AA4B9D3C2BEE49C /* DeviceIdentity.swift in Sources */,
 				2CE4C18582B887EBD27C8148 /* DoodleoopApp.swift in Sources */,
 				98625166CED6AF17FBA06EC3 /* DrawingView.swift in Sources */,
+				DA9C9278F15F4909AF7E6DA3 /* DrawingPhotoExport.swift in Sources */,
 				5B049B89F050D2018FF4F026 /* GameEngine.swift in Sources */,
 				C831A5EB439876C70438E014 /* GameHistoryStore.swift in Sources */,
 				8A25E4D660BC1DDCD0C8F329 /* GameHistoryView.swift in Sources */,
@@ -306,6 +313,7 @@
 				9F109CB5DE756C1EE11BA0D2 /* PhosphorIcon.swift in Sources */,
 				F94E1265431FF8445488A1E6 /* PreviewStateFactory.swift in Sources */,
 				7BED6908D2648759E3138893 /* RevealView.swift in Sources */,
+				3CC6B9E2C0A04EC2808B81FE /* RoundCategories.swift in Sources */,
 				D3E0206FAC6A592C839B35B4 /* SavedGame.swift in Sources */,
 				35FA9C1469D1FF816DBE2064 /* SeatHandoff.swift in Sources */,
 				ED9D38960689EA53059435E4 /* Theme.swift in Sources */,

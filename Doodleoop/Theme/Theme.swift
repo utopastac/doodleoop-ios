@@ -152,6 +152,8 @@ enum Theme {
   enum Motion {
     static let screen = Animation.easeInOut(duration: 0.35)
     static let handoff = Animation.easeInOut(duration: 0.28)
+    /// Reveal — each contribution settles into place as it is shown.
+    static let reveal = Animation.spring(response: 0.42, dampingFraction: 0.82)
   }
 
   // MARK: - Typography
