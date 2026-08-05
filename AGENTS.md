@@ -50,6 +50,7 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 - The in-game drawing surface stays a **square** (`aspectRatio(1)`). Do not stretch it to fill arbitrary aspect ratios.
 - Read-only drawings use `ZoomableDrawingView` (guessing / reveal / history) — an Instagram-style **peek zoom**: pinch to magnify, release springs back to 100%. `ReadOnlyDrawingView` is the plain, non-interactive variant used for thumbnails.
 - Peek zoom keeps everything in `@GestureState` so it resets itself when the fingers lift — don't reintroduce persistent zoom/pan `@State`.
+- A pinch is mirrored into `DrawingZoomLayer` and drawn above the whole screen, so it escapes the scroll view's clip. Every screen root needs `.drawingZoomLayer()` — **including sheets**, which present outside their parent's view tree.
 - Stroke replay (reveal `Draw` setting) is applied to the `GraphicsContext` inside `Canvas`, so a partly-drawn stroke tapers like a live one.
 
 ## Game history

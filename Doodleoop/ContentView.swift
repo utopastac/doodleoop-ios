@@ -25,6 +25,7 @@ struct ContentView: View {
     .animation(Theme.Motion.screen, value: screenIdentity)
     .animation(Theme.Motion.handoff, value: session.handoff != nil)
     .environment(\.font, Theme.TextStyle.label.font)
+    .drawingZoomLayer()
   }
 
   /// Drives screen animation when role or phase changes.

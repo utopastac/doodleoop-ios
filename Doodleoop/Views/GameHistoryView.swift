@@ -623,6 +623,8 @@ private struct DrawingFocusSheet: View {
         }
       }
     }
+    // Sheets present outside the app's view tree, so they need their own layer.
+    .drawingZoomLayer()
     .presentationDetents([.large])
   }
 }
