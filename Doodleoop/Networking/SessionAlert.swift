@@ -1,6 +1,6 @@
 import Foundation
 
-/// User-facing explanation when Multipeer play can't continue or join fails.
+/// User-facing explanation when local-network play can't continue or join fails.
 struct SessionAlert: Equatable, Identifiable {
   enum Kind: String, Equatable {
     case hostEndedGame
@@ -44,7 +44,7 @@ struct SessionAlert: Equatable, Identifiable {
   }
 }
 
-/// Joiner Multipeer browse / invite lifecycle.
+/// Joiner browse / connect lifecycle.
 enum JoinStatus: Equatable {
   case idle
   case browsing

@@ -17,6 +17,8 @@ enum PhosphorIcon: String {
   case signOut = "IconSignOut"
   case clockCounterClockwise = "IconClockCounterClockwise"
   case arrowLeft = "IconArrowLeft"
+  case arrowsClockwise = "IconArrowsClockwise"
+  case wifiHigh = "IconWifiHigh"
 
   var image: Image { Image(rawValue) }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// Stable phone identity used to map Multipeer peers to seats.
+/// Stable phone identity used to map network peers to seats.
 /// Multiple local seats share one `deviceId`.
 enum DeviceIdentity {
   static let defaultsKey = "doodleoop.deviceId"

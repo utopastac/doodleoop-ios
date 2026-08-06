@@ -1,8 +1,6 @@
 import Foundation
-import MultipeerConnectivity
-
 /// Builds fake `GameState` / discovery fixtures for the view-preview menu.
-/// Kept out of the production Multipeer path so `GameSession` stays focused on live play.
+/// Kept out of the live transport path so `GameSession` stays focused on play.
 enum PreviewStateFactory {
   static func makePlayers(
     count: Int,
@@ -179,8 +177,8 @@ enum PreviewStateFactory {
     return next
   }
 
-  static func discoveredDemoPeer() -> MCPeerID {
-    MCPeerID(displayName: "Peter")
+  static func discoveredDemoPeer() -> DiscoveredPeer {
+    DiscoveredPeer(id: "preview-peter", displayName: "Peter")
   }
 
   /// Tiny scribble so avatar badges and reveal pads aren't empty.

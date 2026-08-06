@@ -50,6 +50,12 @@ struct LobbyView: View {
     .pageHorizontalPadding()
     .paperBackground()
     .pageMargins()
+    .onChange(of: state.players.count) { _, count in
+      clampDrawsToPlayerCount(count)
+    }
+    .onAppear {
+      clampDrawsToPlayerCount(state.players.count)
+    }
     .sheet(isPresented: $showCategorySheet) {
       @Bindable var session = session
       CategoryPromptSheet(
@@ -63,6 +69,17 @@ struct LobbyView: View {
       .presentationDetents([.medium, .large])
       .presentationDragIndicator(.visible)
     }
+  }
+
+  private func clampDrawsToPlayerCount(_ count: Int) {
+    guard session.isHost, state.phase == .lobby, count >= 2 else { return }
+    let capped = min(count, GameRoundDefaults.absoluteMaxRounds)
+    guard state.maxRounds > capped else { return }
+    session.updateGameSettings(
+      drawSeconds: state.drawTimeLimitSeconds,
+      guessSeconds: state.guessTimeLimitSeconds,
+      maxRounds: capped
+    )
   }
 
   // MARK: - Header
@@ -115,8 +132,8 @@ struct LobbyView: View {
       }
 
       settingColumn(
-        label: "Max rounds",
-        value: "\(state.maxRounds)"
+        label: "Draws",
+        value: drawsSettingValue
       ) {
         roundsMenu
       }
@@ -124,6 +141,26 @@ struct LobbyView: View {
     // Figma Frame 44: 64pt tall, metrics inset 2pt from top.
     .padding(.top, 2)
     .frame(height: Theme.Spacing.s10, alignment: .top)
+  }
+
+  /// Shows how many times each seat will draw this game.
+  private var drawsSettingValue: String {
+    let seats = state.players.count
+    guard seats >= 2 else { return "\(state.maxRounds)" }
+    return "\(min(seats, state.maxRounds))"
+  }
+
+  private var drawsMenuUpperBound: Int {
+    let seats = state.players.count
+    if seats >= 2 {
+      return min(seats, GameRoundDefaults.absoluteMaxRounds)
+    }
+    return GameRoundDefaults.absoluteMaxRounds
+  }
+
+  private var drawsMenuRange: ClosedRange<Int> {
+    let upper = max(GameRoundDefaults.minRounds, drawsMenuUpperBound)
+    return GameRoundDefaults.minRounds...upper
   }
 
   private func settingColumn<MenuContent: View>(
@@ -177,7 +214,7 @@ struct LobbyView: View {
   }
 
   private var roundsMenu: some View {
-    ForEach(GameRoundDefaults.minRounds...GameRoundDefaults.absoluteMaxRounds, id: \.self) { rounds in
+    ForEach(Array(drawsMenuRange), id: \.self) { rounds in
       Button {
         session.updateGameSettings(
           drawSeconds: state.drawTimeLimitSeconds,
@@ -185,7 +222,7 @@ struct LobbyView: View {
           maxRounds: rounds
         )
       } label: {
-        if rounds == state.maxRounds {
+        if rounds == min(state.maxRounds, drawsMenuUpperBound) {
           Label("\(rounds)", systemImage: "checkmark")
         } else {
           Text("\(rounds)")
@@ -288,8 +325,16 @@ struct LobbyView: View {
         .doodleButton(.secondary)
       case .browsing, .idle:
         if session.discoveredPeers.isEmpty {
-          ProgressView("Looking for games…")
-            .tint(Theme.Accent.default)
+          HStack(spacing: Theme.Spacing.s2) {
+            PhosphorIcon.wifiHigh.image
+              .resizable()
+              .renderingMode(.template)
+              .scaledToFit()
+              .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
+              .foregroundStyle(Theme.Accent.default)
+            ProgressView("Looking for games…")
+              .tint(Theme.Accent.default)
+          }
           Text("Phones need to be nearby with Local Network on for Doodleoop.")
             .themeText(.caption)
             .foregroundStyle(Theme.Text.tertiary)
@@ -299,7 +344,7 @@ struct LobbyView: View {
             .foregroundStyle(Theme.Text.primary)
             .textCase(.uppercase)
 
-          ForEach(session.discoveredPeers, id: \.displayName) { peer in
+          ForEach(session.discoveredPeers) { peer in
             Button(peer.displayName) {
               session.join(peer)
             }

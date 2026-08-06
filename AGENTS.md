@@ -7,9 +7,9 @@
 | Game rules / phases | `Doodleoop/Models/GameEngine.swift` | Put rules in views or session timers |
 | Domain state | `Doodleoop/Models/GameModels.swift` | Mix networking enums into UI |
 | Completed-round history | `Doodleoop/Models/SavedGame.swift` + `GameHistoryStore.swift` | Put file I/O in views |
-| Sync, seats, handoffs, Multipeer | `Doodleoop/Networking/GameSession.swift` (+ transport helpers) | Duplicate host/joiner apply paths |
+| Sync, seats, handoffs, local network | `Doodleoop/Networking/GameSession.swift` (+ `NetworkPartyTransport`) | Duplicate host/joiner apply paths |
 | Wire protocol | `Doodleoop/Networking/NetworkMessage.swift` | Redefine messages in models |
-| UI / screens | `Doodleoop/Views/*.swift` | Call Multipeer or mutate `GameState` directly |
+| UI / screens | `Doodleoop/Views/*.swift` | Call Network.framework or mutate `GameState` directly |
 
 Flow: **Views → GameSession intents → (host) GameEngine → syncState → joiners**.
 
@@ -23,7 +23,7 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 2. Everyone **draws** it (turn 0)
 3. Pads pass **left**; everyone **guesses** the drawing in front of them
 4. Pads pass left; everyone **draws** that guess
-5. Alternate until each pad has `playerCount` contributions → **reveal** each pad’s journey one step at a time (synced on all phones), then the next pad
+5. Alternate draw / guess until each seat has **drawn on every pad** (capped by lobby draw cap) → **reveal** each pad’s journey one step at a time (synced on all phones), then the next pad
 
 ## IDs
 
@@ -44,11 +44,12 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 - In-game screens (host/joiner) show a global **leave** control via `.leaveGameChrome()` on `ContentView`’s game flow — Phosphor `sign-out`, top trailing. Lobby, reveal and round-over use `LeaveToolbarBand` for the same control in a 40pt toolbar band instead of the overlay.
 - Confirm with the dialog in `LeaveGameButton` before calling `session.leaveGame()`.
 - Top-row content that sits on the trailing edge (drawing / guessing / reveal) should pad with `Theme.Sizing.leaveButtonReserve` so it doesn’t collide with the chrome.
-- Host leave broadcasts `.sessionEnded` before disconnect; joiners also exit if the Multipeer session drops.
+- Host leave broadcasts `.sessionEnded` before disconnect; joiners also exit if the host link drops for good.
 - Mid-round disconnects mark the device `absentDeviceIds` and auto-fill empty submissions so the round can advance; seats are dropped on return to lobby.
 - Failed joins stay on the browse lobby with `joinStatus` — don’t eject to home. Host-drop / session-ended show `SessionAlert` on home. Departures set `statusBanner` for the host.
+- Brief link drops use a **~15s grace** before absent/leave. Host stays discoverable mid-round so known devices can reconnect (Bonjour + `.hello` with `deviceId`); returning devices clear `absentDeviceIds` and get a full sync. If the host never returns, remaining phones **elect a new network host** (`roomId` / `stateEpoch` / `networkHostDeviceId` on `GameState`), advertise, and continue. `ContentView` forwards `scenePhase` into `handleLifecycle` for reconnect + a stay-in-app tip. Joiners see `ReconnectOverlay` / `HostMigrationOverlay`; hosts see `ConnectionPresenceStrip` while someone is reconnecting or absent.
+- **Simulator multi-instance testing**: Bonjour between Simulator apps is unreliable. `NetworkPartyTransport` uses a Mac-shared file bridge (`~/Library/Caches/doodleoop-sim-ports/`) and loopback TCP (`127.0.0.1`) when `targetEnvironment(simulator)`. Real devices keep Bonjour + `includePeerToPeer`.
 - Info.plist must keep `NSLocalNetworkUsageDescription` and `NSBonjourServices` for `_doodleoop-game._tcp` / `._udp`.
-- Brief Multipeer drops use a **~15s grace** before absent/leave. Host stays discoverable mid-round so known devices can rejoin via invite context (`deviceId`); `.hello` from a known device clears `absentDeviceIds` and full-syncs. `ContentView` forwards `scenePhase` into `handleLifecycle` for reconnect + a stay-in-app tip.
 
 ## Sheets
 

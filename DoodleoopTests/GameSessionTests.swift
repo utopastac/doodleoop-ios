@@ -1,5 +1,4 @@
 import XCTest
-import MultipeerConnectivity
 @testable import Doodleoop
 
 @MainActor
@@ -26,7 +25,7 @@ final class GameSessionTests: XCTestCase {
     incoming.players[0].avatar = avatar
 
     session.testing_configure(role: .joiner, state: nil)
-    session.testing_handle(.syncState(incoming), fromPeerNamed: "Host")
+    session.testing_handle(.syncState(incoming), fromPeerKey: "Host")
 
     XCTAssertEqual(session.state?.players.count, 2)
     XCTAssertEqual(session.state?.player(id: "host")?.avatar, avatar)
@@ -40,12 +39,12 @@ final class GameSessionTests: XCTestCase {
     lobby.players[0].avatar = avatar
 
     session.testing_configure(role: .joiner, state: nil)
-    session.testing_handle(.syncState(lobby), fromPeerNamed: "Host")
+    session.testing_handle(.syncState(lobby), fromPeerKey: "Host")
 
     var drawing = lobby
     drawing = GameEngine.startRound(category: "Food", in: drawing)
     let stripped = drawing.strippingAvatars()
-    session.testing_handle(.syncState(stripped), fromPeerNamed: "Host")
+    session.testing_handle(.syncState(stripped), fromPeerKey: "Host")
 
     XCTAssertEqual(session.state?.phase, .drawing)
     XCTAssertEqual(session.state?.player(id: "host")?.avatar, avatar)
@@ -55,7 +54,7 @@ final class GameSessionTests: XCTestCase {
     let store = try makeHistoryStore()
     let session = GameSession(historyStore: store)
     session.testing_configure(role: .joiner, state: lobbyState())
-    session.testing_handle(.sessionEnded, fromPeerNamed: "Host")
+    session.testing_handle(.sessionEnded, fromPeerKey: "Host")
     XCTAssertEqual(session.role, .idle)
     XCTAssertNil(session.state)
     XCTAssertEqual(session.alert, .hostEndedGame)
@@ -64,16 +63,70 @@ final class GameSessionTests: XCTestCase {
   func testJoinerHostDisconnectLeavesGame() throws {
     let store = try makeHistoryStore()
     let session = GameSession(historyStore: store)
-    session.testing_configure(role: .joiner, state: lobbyState())
-    session.testing_peerChange(named: "Host", state: .notConnected)
+    var state = lobbyState()
+    state.roomId = "room-1"
+    state.networkHostDeviceId = "host"
+    state.stateEpoch = 1
+    session.testing_configure(role: .joiner, state: state)
+    session.testing_peerChange(peerKey: "Host", state: .notConnected)
     XCTAssertEqual(session.role, .joiner)
     XCTAssertNotNil(session.state)
     XCTAssertTrue(session.isReconnecting)
 
+    // Reconnect grace → migrate seek (we're not the elected host among host/joiner ids).
     session.testing_expireDisconnectGrace(for: "host")
+    XCTAssertTrue(session.testing_isMigratingHost)
+    XCTAssertEqual(session.role, .joiner)
+
+    session.testing_expireDisconnectGrace(for: "migration")
     XCTAssertEqual(session.role, .idle)
     XCTAssertNil(session.state)
     XCTAssertEqual(session.alert, .lostConnection)
+  }
+
+  func testJoinerPromotesWhenElectedAfterHostLoss() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let me = session.devicePlayerId
+    var state = GameState()
+    state.roomId = "room-migrate"
+    state.networkHostDeviceId = "old-host"
+    state.stateEpoch = 3
+    state = GameEngine.addPlayer(id: "old-host", name: "Host", deviceId: "old-host", to: state)
+    state = GameEngine.addPlayer(id: me, name: "Me", deviceId: me, to: state)
+    state = GameEngine.startRound(category: "Food", in: state)
+
+    let recorder = RecordingMessageTransport()
+    session.testing_configure(
+      role: .joiner,
+      state: state,
+      messageTransport: recorder
+    )
+    session.testing_attemptHostMigration()
+
+    XCTAssertEqual(session.role, .host)
+    XCTAssertEqual(session.state?.networkHostDeviceId, me)
+    XCTAssertEqual(session.state?.stateEpoch, 4)
+    XCTAssertTrue(session.state?.absentDeviceIds.contains("old-host") ?? false)
+    XCTAssertFalse(session.testing_isMigratingHost)
+    XCTAssertTrue(recorder.sent.contains { if case .syncState = $0 { return true }; return false })
+  }
+
+  func testJoinerIgnoresStaleSyncEpoch() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    var current = lobbyState()
+    current.roomId = "r"
+    current.networkHostDeviceId = "host"
+    current.stateEpoch = 5
+    session.testing_configure(role: .joiner, state: current)
+
+    var stale = current
+    stale.stateEpoch = 4
+    stale.category = "should-not-apply"
+    session.testing_handle(.syncState(stale), fromPeerKey: "Host")
+    XCTAssertEqual(session.state?.stateEpoch, 5)
+    XCTAssertEqual(session.state?.category, "")
   }
 
   func testJoinerInviteTimeoutStaysBrowsing() throws {
@@ -84,7 +137,7 @@ final class GameSessionTests: XCTestCase {
       state: nil,
       joinStatus: .connecting(to: "HostPhone")
     )
-    session.testing_peerChange(named: "HostPhone", state: .notConnected)
+    session.testing_peerChange(peerKey: "HostPhone", state: .notConnected)
     XCTAssertEqual(session.role, .joiner)
     XCTAssertNil(session.state)
     guard case .failed(let message) = session.joinStatus else {
@@ -103,13 +156,15 @@ final class GameSessionTests: XCTestCase {
       peerDeviceIds: ["JoinerPhone": "joiner"],
       messageTransport: recorder
     )
-    session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    session.testing_peerChange(peerKey: "JoinerPhone", state: .notConnected)
     XCTAssertEqual(session.state?.players.map(\.id), ["host", "joiner"])
     XCTAssertEqual(session.statusBanner, "Waiting for Joiner to reconnect…")
+    XCTAssertTrue(session.reconnectingDeviceIds.contains("joiner"))
 
     session.testing_expireDisconnectGrace(for: "JoinerPhone")
     XCTAssertEqual(session.state?.players.map(\.id), ["host"])
     XCTAssertEqual(session.statusBanner, "Joiner left the lobby")
+    XCTAssertFalse(session.reconnectingDeviceIds.contains("joiner"))
   }
 
   func testHostRejoinClearsAbsentDevice() throws {
@@ -128,10 +183,29 @@ final class GameSessionTests: XCTestCase {
     )
     session.testing_handle(
       .hello(playerId: "joiner", name: "Joiner", avatar: .empty),
-      fromPeerNamed: "JoinerPhone"
+      fromPeerKey: "JoinerPhone"
     )
     XCTAssertFalse(session.state?.absentDeviceIds.contains("joiner") ?? true)
     XCTAssertEqual(session.statusBanner, "Joiner is back")
+  }
+
+  func testHostRejectsMidRoundStranger() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    var state = lobbyState()
+    state = GameEngine.startRound(category: "Food", in: state)
+    session.testing_configure(
+      role: .host,
+      state: state,
+      messageTransport: recorder
+    )
+    session.testing_handle(
+      .hello(playerId: "stranger", name: "Stranger", avatar: .empty),
+      fromPeerKey: "StrangerPhone"
+    )
+    XCTAssertEqual(session.state?.players.map(\.id), ["host", "joiner"])
+    XCTAssertTrue(recorder.sent.isEmpty)
   }
 
   func testBackgroundTipOnReturn() throws {
@@ -153,7 +227,7 @@ final class GameSessionTests: XCTestCase {
       peerDeviceIds: ["JoinerPhone": "joiner"],
       messageTransport: recorder
     )
-    session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    session.testing_peerChange(peerKey: "JoinerPhone", state: .notConnected)
     session.testing_expireDisconnectGrace(for: "JoinerPhone")
     XCTAssertEqual(session.statusBanner, "Joiner left the lobby")
   }
@@ -183,7 +257,7 @@ final class GameSessionTests: XCTestCase {
       peerDeviceIds: ["JoinerPhone": "joiner"],
       messageTransport: recorder
     )
-    session.testing_peerChange(named: "JoinerPhone", state: .notConnected)
+    session.testing_peerChange(peerKey: "JoinerPhone", state: .notConnected)
     session.testing_expireDisconnectGrace(for: "JoinerPhone")
     XCTAssertEqual(session.state?.players.map(\.id), ["host"])
     XCTAssertTrue(recorder.sent.contains { if case .syncState = $0 { return true }; return false })
@@ -204,10 +278,22 @@ final class GameSessionTests: XCTestCase {
     let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])])
     session.testing_handle(
       .submitDrawing(playerId: "host", drawing: drawing),
-      fromPeerNamed: "JoinerPhone"
+      fromPeerKey: "JoinerPhone"
     )
     XCTAssertTrue(session.state?.submittedPlayerIds.isEmpty ?? false)
     XCTAssertTrue(recorder.sent.isEmpty)
+  }
+
+  func testMessageFramingRoundTrip() throws {
+    var decoder = MessageFraming.Decoder()
+    let payload = Data("{\"hello\":true}".utf8)
+    let framed = MessageFraming.encode(payload)
+    // Split across chunks to exercise the buffer.
+    let mid = framed.count / 2
+    let first = try decoder.append(framed.prefix(mid))
+    XCTAssertTrue(first.isEmpty)
+    let second = try decoder.append(framed.suffix(from: mid))
+    XCTAssertEqual(second, [payload])
   }
 
   func testNetworkMessageCodableRoundTrip() throws {
@@ -245,5 +331,19 @@ final class GameSessionTests: XCTestCase {
     XCTAssertTrue(state.absentDeviceIds.isEmpty)
     XCTAssertEqual(state.revealStepIndex, 0)
     XCTAssertEqual(state.drawTimeLimitSeconds, GameTimerDefaults.drawSeconds)
+  }
+
+  func testConnectionPresencesTrackReconnect() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    session.testing_configure(
+      role: .host,
+      state: lobbyState(),
+      peerDeviceIds: ["JoinerPhone": "joiner"]
+    )
+    session.testing_peerChange(peerKey: "JoinerPhone", state: .notConnected)
+    let joiner = session.connectionPresences.first { $0.deviceId == "joiner" }
+    XCTAssertEqual(joiner?.status, .reconnecting)
+    XCTAssertTrue(session.showsConnectionStrip)
   }
 }

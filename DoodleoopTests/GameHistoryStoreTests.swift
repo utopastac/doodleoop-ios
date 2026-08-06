@@ -71,7 +71,8 @@ final class GameHistoryStoreTests: XCTestCase {
     state = GameEngine.addPlayer(id: "p1", name: "Bea", deviceId: "d1", to: state)
     state = GameEngine.startRound(category: "Animals", in: state)
 
-    for turn in 0..<2 {
+    while state.phase == .drawing || state.phase == .guessing {
+      let turn = state.turnIndex
       for i in 0..<2 {
         if turn % 2 == 0 {
           let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.2, y: 0.3)])])

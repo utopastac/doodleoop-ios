@@ -1,28 +1,32 @@
 import Foundation
-import MultipeerConnectivity
 
-/// Outbound messaging seam so GameSession can be tested without Multipeer.
+/// Outbound messaging seam so GameSession can be tested without a live transport.
 @MainActor
 protocol GameMessageTransport: AnyObject {
   func send(_ message: NetworkMessage)
   func disconnect()
 }
 
-/// Adapts MultipeerTransport to GameMessageTransport.
+/// Encodes `NetworkMessage` and fans out through `PartyTransport`.
 @MainActor
-final class MultipeerMessageTransport: GameMessageTransport {
-  private let transport: MultipeerTransport
+final class PartyMessageTransport: GameMessageTransport {
+  private let transport: PartyTransport
 
-  init(_ transport: MultipeerTransport) {
+  init(_ transport: PartyTransport) {
     self.transport = transport
   }
 
   func send(_ message: NetworkMessage) {
-    transport.send(message)
+    do {
+      let data = try JSONEncoder().encode(message)
+      transport.send(data, to: nil)
+    } catch {
+      print("PartyMessageTransport: failed to encode: \(error)")
+    }
   }
 
   func disconnect() {
-    transport.disconnect()
+    transport.stop()
   }
 }
 

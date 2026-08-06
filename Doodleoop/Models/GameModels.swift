@@ -191,10 +191,16 @@ struct GameState: Codable, Equatable {
   var phase: GamePhase = .lobby
   var players: [Player] = []
   var hostId: String = ""
+  /// Stable id for this lobby/game — used to find the room after host migration.
+  var roomId: String = ""
+  /// Device currently running the network host / game engine.
+  var networkHostDeviceId: String = ""
+  /// Bumps on each host migration so stale hosts lose authority.
+  var stateEpoch: Int = 0
   var category: String = ""
   /// Pads indexed by starting player id.
   var pads: [SketchPad] = []
-  /// How many simultaneous turns have completed (0..<effectiveRoundCount).
+  /// How many simultaneous turns have completed (0..<effectiveTurnCount).
   var turnIndex: Int = 0
   /// playerId → submitted for current turn
   var submittedPlayerIds: Set<String> = []
@@ -207,7 +213,8 @@ struct GameState: Codable, Equatable {
   var drawTimeLimitSeconds: Int = GameTimerDefaults.drawSeconds
   /// Seconds allowed for each guessing turn.
   var guessTimeLimitSeconds: Int = GameTimerDefaults.guessSeconds
-  /// How many simultaneous turns run before reveal (host-settable in lobby).
+  /// Cap on how many times each seat draws (host-settable). Actual draws are
+  /// `min(maxRounds, playerCount)` so a 3-player game always draws three times.
   var maxRounds: Int = GameRoundDefaults.maxRounds
   /// Host-authored deadline for the current drawing/guessing turn.
   var phaseEndsAt: Date?
@@ -219,6 +226,9 @@ struct GameState: Codable, Equatable {
     phase: GamePhase = .lobby,
     players: [Player] = [],
     hostId: String = "",
+    roomId: String = "",
+    networkHostDeviceId: String = "",
+    stateEpoch: Int = 0,
     category: String = "",
     pads: [SketchPad] = [],
     turnIndex: Int = 0,
@@ -234,6 +244,9 @@ struct GameState: Codable, Equatable {
     self.phase = phase
     self.players = players
     self.hostId = hostId
+    self.roomId = roomId
+    self.networkHostDeviceId = networkHostDeviceId
+    self.stateEpoch = stateEpoch
     self.category = category
     self.pads = pads
     self.turnIndex = turnIndex
@@ -252,6 +265,9 @@ struct GameState: Codable, Equatable {
     phase = try container.decode(GamePhase.self, forKey: .phase)
     players = try container.decode([Player].self, forKey: .players)
     hostId = try container.decode(String.self, forKey: .hostId)
+    roomId = try container.decodeIfPresent(String.self, forKey: .roomId) ?? ""
+    networkHostDeviceId = try container.decodeIfPresent(String.self, forKey: .networkHostDeviceId) ?? ""
+    stateEpoch = try container.decodeIfPresent(Int.self, forKey: .stateEpoch) ?? 0
     category = try container.decode(String.self, forKey: .category)
     pads = try container.decode([SketchPad].self, forKey: .pads)
     turnIndex = try container.decode(Int.self, forKey: .turnIndex)
@@ -300,8 +316,21 @@ struct GameState: Codable, Equatable {
     !players.isEmpty && submittedPlayerIds.count >= players.count
   }
 
+  /// How many times each seat will draw this round.
+  /// Full game: once per pad (`players.count`). `maxRounds` caps that on big tables.
+  var effectiveDrawCount: Int {
+    guard !players.isEmpty else { return maxRounds }
+    return min(maxRounds, players.count)
+  }
+
+  /// Total draw+guess turns before reveal: D G D G … D
+  /// (= `2 * effectiveDrawCount - 1`) so every seat draws on every pad up to the cap.
+  var effectiveTurnCount: Int {
+    max(1, 2 * effectiveDrawCount - 1)
+  }
+
   var isRoundComplete: Bool {
-    !players.isEmpty && turnIndex >= min(maxRounds, players.count)
+    !players.isEmpty && turnIndex >= effectiveTurnCount
   }
 
   var currentTurnTimeLimitSeconds: Int {

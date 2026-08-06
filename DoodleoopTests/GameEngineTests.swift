@@ -49,7 +49,8 @@ final class GameEngineTests: XCTestCase {
     var state = makeLobby(players: 2)
     state = GameEngine.startRound(category: "Jobs", in: state)
 
-    for turn in 0..<2 {
+    while state.phase == .drawing || state.phase == .guessing {
+      let turn = state.turnIndex
       for i in 0..<2 {
         if turn % 2 == 0 {
           let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.2, y: 0.3)])])
@@ -61,7 +62,8 @@ final class GameEngineTests: XCTestCase {
     }
 
     XCTAssertEqual(state.phase, .reveal)
-    XCTAssertEqual(state.pads[0].steps.count, 3) // prompt + 2 contributions
+    // prompt + draw + guess + draw
+    XCTAssertEqual(state.pads[0].steps.count, 4)
     XCTAssertEqual(state.revealPadIndex, 0)
     XCTAssertEqual(state.revealStepIndex, 1)
   }
@@ -70,7 +72,8 @@ final class GameEngineTests: XCTestCase {
     var state = makeLobby(players: 2)
     state = GameEngine.startRound(category: "Jobs", in: state)
 
-    for turn in 0..<2 {
+    while state.phase == .drawing || state.phase == .guessing {
+      let turn = state.turnIndex
       for i in 0..<2 {
         if turn % 2 == 0 {
           let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.2, y: 0.3)])])
@@ -92,6 +95,12 @@ final class GameEngineTests: XCTestCase {
     XCTAssertEqual(state.revealPadIndex, 0)
     XCTAssertEqual(state.revealStepIndex, 2)
     XCTAssertEqual(state.visibleRevealContributions.count, 2)
+
+    // Next → second drawing on pad 0
+    state = GameEngine.advanceReveal(in: state)
+    XCTAssertEqual(state.revealPadIndex, 0)
+    XCTAssertEqual(state.revealStepIndex, 3)
+    XCTAssertEqual(state.visibleRevealContributions.count, 3)
     XCTAssertFalse(state.isRevealFinished)
 
     // Next → start pad 1 with first drawing
@@ -101,10 +110,11 @@ final class GameEngineTests: XCTestCase {
     XCTAssertEqual(state.revealStepIndex, 1)
     XCTAssertEqual(state.visibleRevealContributions.count, 1)
 
-    // Next → last guess on pad 1
+    // Finish pad 1 contributions
+    state = GameEngine.advanceReveal(in: state)
     state = GameEngine.advanceReveal(in: state)
     XCTAssertEqual(state.revealPadIndex, 1)
-    XCTAssertEqual(state.revealStepIndex, 2)
+    XCTAssertEqual(state.revealStepIndex, 3)
     XCTAssertTrue(state.isRevealFinished)
 
     // Finish → round over
@@ -176,7 +186,7 @@ final class GameEngineTests: XCTestCase {
     XCTAssertEqual(next.maxRounds, GameRoundDefaults.maxRounds)
   }
 
-  func testMaxRoundsCapsBeforePlayerCount() {
+  func testMaxRoundsCapsDrawCountNotTotalTurns() {
     var state = makeLobby(players: 4)
     state = GameEngine.updateSettings(
       drawTimeLimitSeconds: 60,
@@ -185,13 +195,17 @@ final class GameEngineTests: XCTestCase {
       in: state
     )
     state = GameEngine.startRound(category: "Animals", in: state)
+    XCTAssertEqual(state.effectiveDrawCount, 2)
+    XCTAssertEqual(state.effectiveTurnCount, 3) // D G D
     XCTAssertFalse(state.isRoundComplete)
 
     state.turnIndex = 2
+    XCTAssertFalse(state.isRoundComplete)
+    state.turnIndex = 3
     XCTAssertTrue(state.isRoundComplete)
   }
 
-  func testMaxRoundsDoesNotExceedPlayerCount() {
+  func testThreePlayersEachDrawThreeTimes() {
     var state = makeLobby(players: 3)
     state = GameEngine.updateSettings(
       drawTimeLimitSeconds: 60,
@@ -199,7 +213,25 @@ final class GameEngineTests: XCTestCase {
       maxRounds: 8,
       in: state
     )
-    state.turnIndex = 3
+    XCTAssertEqual(state.effectiveDrawCount, 3)
+    XCTAssertEqual(state.effectiveTurnCount, 5) // D G D G D
+    state.turnIndex = 4
+    XCTAssertFalse(state.isRoundComplete)
+    state.turnIndex = 5
+    XCTAssertTrue(state.isRoundComplete)
+  }
+
+  func testMaxRoundsCapsDrawsOnLargeTables() {
+    var state = makeLobby(players: 10)
+    state = GameEngine.updateSettings(
+      drawTimeLimitSeconds: 60,
+      guessTimeLimitSeconds: 30,
+      maxRounds: 8,
+      in: state
+    )
+    XCTAssertEqual(state.effectiveDrawCount, 8)
+    XCTAssertEqual(state.effectiveTurnCount, 15) // 8 draws + 7 guesses
+    state.turnIndex = 15
     XCTAssertTrue(state.isRoundComplete)
   }
 
@@ -334,7 +366,9 @@ final class GameEngineTests: XCTestCase {
     state = GameEngine.submitGuess(playerId: "p0", text: "cat", in: state, now: start)
     let expired = state.phaseEndsAt!
     state = GameEngine.expireTurn(in: state, now: expired)
-    XCTAssertEqual(state.phase, .reveal)
+    // 2-player game still has a final draw turn after the first guess.
+    XCTAssertEqual(state.phase, .drawing)
+    XCTAssertEqual(state.turnIndex, 2)
     XCTAssertTrue(state.pads.contains { pad in
       pad.steps.contains {
         if case .guess(let playerId, let text) = $0 {
@@ -387,8 +421,9 @@ final class GameEngineTests: XCTestCase {
     XCTAssertEqual(state.phase, .guessing)
 
     state = GameEngine.submitGuess(playerId: "p0", text: "cat", in: state, now: now)
-    // p1 absent should auto-fill the guess and advance to reveal (2-player round).
-    XCTAssertEqual(state.phase, .reveal)
+    // p1 absent auto-fills the guess; 2-player games still have one more draw turn.
+    XCTAssertEqual(state.phase, .drawing)
+    XCTAssertEqual(state.turnIndex, 2)
   }
 
   func testReturnToLobbyDropsAbsentDevices() {
@@ -401,5 +436,26 @@ final class GameEngineTests: XCTestCase {
     XCTAssertEqual(state.phase, .lobby)
     XCTAssertEqual(state.players.map(\.id), ["p0"])
     XCTAssertTrue(state.absentDeviceIds.isEmpty)
+  }
+
+  func testElectsLowestPresentDeviceId() {
+    var state = GameState()
+    state = GameEngine.addPlayer(id: "p0", name: "A", deviceId: "zebra", to: state)
+    state = GameEngine.addPlayer(id: "p1", name: "B", deviceId: "alpha", to: state)
+    state = GameEngine.addPlayer(id: "p2", name: "C", deviceId: "middle", to: state)
+    XCTAssertEqual(GameEngine.electedNetworkHostDeviceId(in: state), "alpha")
+
+    state = GameEngine.handleDisconnect(deviceId: "alpha", from: state)
+    // Lobby disconnect removes alpha's seats.
+    XCTAssertEqual(GameEngine.electedNetworkHostDeviceId(in: state), "middle")
+  }
+
+  func testClaimNetworkHostBumpsEpoch() {
+    var state = GameState()
+    state.networkHostDeviceId = "old"
+    state.stateEpoch = 2
+    state = GameEngine.claimNetworkHost(deviceId: "new", in: state)
+    XCTAssertEqual(state.networkHostDeviceId, "new")
+    XCTAssertEqual(state.stateEpoch, 3)
   }
 }

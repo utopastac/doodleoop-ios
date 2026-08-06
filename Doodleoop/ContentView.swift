@@ -22,9 +22,25 @@ struct ContentView: View {
           .transition(.opacity)
           .zIndex(1)
       }
+
+      if session.isMigratingHost {
+        HostMigrationOverlay(isBecomingHost: session.isHost) {
+          session.leaveGame()
+        }
+        .transition(.opacity)
+        .zIndex(4)
+      } else if session.isReconnecting, session.role == .joiner {
+        ReconnectOverlay {
+          session.leaveGame()
+        }
+        .transition(.opacity)
+        .zIndex(3)
+      }
     }
     .animation(Theme.Motion.screen, value: screenIdentity)
     .animation(Theme.Motion.handoff, value: session.handoff != nil)
+    .animation(Theme.Motion.handoff, value: session.isReconnecting)
+    .animation(Theme.Motion.handoff, value: session.isMigratingHost)
     .environment(\.font, Theme.TextStyle.label.font)
     .drawingZoomLayer()
     .onChange(of: scenePhase) { _, phase in
@@ -53,7 +69,7 @@ struct ContentView: View {
         session.clearStayInAppTip()
       }
     } message: {
-      Text("Switching apps can drop the connection. Keep Doodleoop open while you play — we'll try to reconnect for a few seconds if you bounce away.")
+      Text("Nearby games pause when the app backgrounds. Leave Doodleoop open on every phone — if the host bounces away, another phone can take over after a short wait.")
     }
   }
 
@@ -128,22 +144,26 @@ struct ContentView: View {
         }
       }
 
-      if let banner = session.statusBanner {
-        VStack {
-          SessionStatusBanner(
-            text: banner,
-            showsProgress: session.isReconnecting
-          ) {
+      VStack(spacing: Theme.Spacing.s2) {
+        if session.showsConnectionStrip {
+          ConnectionPresenceStrip(presences: session.connectionPresences)
+            .padding(.top, usesInlineLeave ? Theme.Spacing.s8 : Theme.Spacing.s2)
+            .transition(.move(edge: .top).combined(with: .opacity))
+        }
+
+        if let banner = session.statusBanner, !session.isReconnecting {
+          SessionStatusBanner(text: banner) {
             session.clearStatusBanner()
           }
-          .padding(.top, Theme.Spacing.s3)
-          Spacer()
+          .transition(.move(edge: .top).combined(with: .opacity))
         }
-        .transition(.move(edge: .top).combined(with: .opacity))
-        .zIndex(2)
+
+        Spacer()
       }
+      .zIndex(2)
     }
     .animation(Theme.Motion.handoff, value: session.statusBanner)
+    .animation(Theme.Motion.handoff, value: session.showsConnectionStrip)
     .leaveGameChrome(isEnabled: !usesInlineLeave)
   }
 
@@ -158,20 +178,13 @@ struct ContentView: View {
   )
 }
 
-/// Compact in-game notice for Multipeer departures and reconnects.
+/// Compact in-game notice for departures and brief status.
 struct SessionStatusBanner: View {
   let text: String
-  var showsProgress: Bool = false
   var onDismiss: () -> Void
 
   var body: some View {
     HStack(alignment: .top, spacing: Theme.Spacing.s2) {
-      if showsProgress {
-        ProgressView()
-          .controlSize(.small)
-          .tint(Theme.Accent.default)
-      }
-
       Text(text)
         .themeText(.caption)
         .foregroundStyle(Theme.Text.primary)

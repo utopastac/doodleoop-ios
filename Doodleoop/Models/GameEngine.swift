@@ -44,6 +44,26 @@ enum GameEngine {
     return next
   }
 
+  /// Present (non-absent) device ids, sorted for deterministic host election.
+  static func eligibleNetworkHostDeviceIds(in state: GameState) -> [String] {
+    Set(state.players.map(\.deviceId))
+      .subtracting(state.absentDeviceIds)
+      .sorted()
+  }
+
+  /// Lowest present `deviceId` becomes network host after a migration.
+  static func electedNetworkHostDeviceId(in state: GameState) -> String? {
+    eligibleNetworkHostDeviceIds(in: state).first
+  }
+
+  /// Claims network authority and bumps `stateEpoch` so stale hosts yield.
+  static func claimNetworkHost(deviceId: String, in state: GameState) -> GameState {
+    var next = state
+    next.networkHostDeviceId = deviceId
+    next.stateEpoch += 1
+    return next
+  }
+
   /// Lobby: drop seats. Mid-round: keep seats (pad indices stay stable), mark the
   /// device absent, and fill empty submissions for this turn so the round can advance.
   static func handleDisconnect(
