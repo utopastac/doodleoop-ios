@@ -9,9 +9,13 @@ struct DrawingView: View {
   @State private var widthByTool: [DrawingTool: Double] = Dictionary(
     uniqueKeysWithValues: DrawingTool.allCases.map { ($0, $0.defaultWidth) }
   )
+  /// Optimistic submit so joiners see the wait UI before `syncState` lands.
+  @State private var locallySubmittedForPlayerId: String?
 
   var body: some View {
     let state = session.state
+    let hasSubmitted = locallySubmittedForPlayerId == session.localPlayerId
+      || (state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
     let prompt: String = {
       guard let state,
             let pad = state.pad(inFrontOf: session.localPlayerId),
@@ -25,9 +29,23 @@ struct DrawingView: View {
         return state.category
       }
     }()
-    let canSubmit = !drawing.isEmpty
-      && !(state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
+    let canSubmit = !drawing.isEmpty && !hasSubmitted
 
+    Group {
+      if hasSubmitted {
+        waitingContent(endsAt: state?.phaseEndsAt)
+      } else {
+        drawingContent(prompt: prompt, canSubmit: canSubmit, endsAt: state?.phaseEndsAt)
+      }
+    }
+    .paperBackground()
+    .pageMargins()
+    .task(id: state?.phaseEndsAt) {
+      await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
+    }
+  }
+
+  private func drawingContent(prompt: String, canSubmit: Bool, endsAt: Date?) -> some View {
     VStack(spacing: 0) {
       Text(prompt)
         .themeText(.body)
@@ -66,7 +84,7 @@ struct DrawingView: View {
       .pageHorizontalPadding()
 
       HStack(alignment: .bottom, spacing: Theme.Spacing.s2) {
-        PhaseCountdown(endsAt: session.state?.phaseEndsAt, style: .timer)
+        PhaseCountdown(endsAt: endsAt, style: .timer)
           .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
 
         saveButton(canSubmit: canSubmit)
@@ -76,10 +94,27 @@ struct DrawingView: View {
       .pageHorizontalPadding()
       .padding(.bottom, Theme.Spacing.s3)
     }
-    .paperBackground()
-    .pageMargins()
-    .task(id: state?.phaseEndsAt) {
-      await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
+  }
+
+  private func waitingContent(endsAt: Date?) -> some View {
+    VStack(spacing: 0) {
+      Spacer(minLength: Theme.Spacing.s3)
+
+      Text("Waiting for other players")
+        .themeText(.body)
+        .multilineTextAlignment(.center)
+        .foregroundStyle(Theme.Text.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.trailing, Theme.Sizing.leaveButtonReserve)
+        .pageHorizontalPadding()
+
+      Spacer(minLength: Theme.Spacing.s4)
+
+      PhaseCountdown(endsAt: endsAt, style: .timer)
+        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
+        .frame(height: Theme.Spacing.s10, alignment: .bottom)
+        .pageHorizontalPadding()
+        .padding(.bottom, Theme.Spacing.s3)
     }
   }
 
@@ -96,10 +131,15 @@ struct DrawingView: View {
 
   private func saveButton(canSubmit: Bool) -> some View {
     DoodlePrimarySaveButton(title: "Save", isEnabled: canSubmit) {
-      session.submitDrawing(drawing)
-      drawing = .empty
-      undoStack.reset()
+      commitDrawing()
     }
+  }
+
+  private func commitDrawing() {
+    locallySubmittedForPlayerId = session.localPlayerId
+    session.submitDrawing(drawing)
+    drawing = .empty
+    undoStack.reset()
   }
 
   /// Submit whatever is on the canvas when time runs out so work isn’t lost to expireTurn.
@@ -107,10 +147,9 @@ struct DrawingView: View {
     guard await PhaseTimer.waitForExpiry(endsAt: endsAt) else { return }
     guard let state = session.state,
           state.phase == .drawing,
+          locallySubmittedForPlayerId != session.localPlayerId,
           !state.submittedPlayerIds.contains(session.localPlayerId),
           !drawing.isEmpty else { return }
-    session.submitDrawing(drawing)
-    drawing = .empty
-    undoStack.reset()
+    commitDrawing()
   }
 }

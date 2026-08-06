@@ -488,6 +488,19 @@ extension View {
     modifier(PaperSurfaceModifier(style: style, shape: shape))
   }
 
+  /// Thin edge matching page `grid-line` — square drawing canvases.
+  @ViewBuilder
+  func drawingCanvasBorder(_ isEnabled: Bool = true) -> some View {
+    if isEnabled {
+      overlay {
+        Rectangle()
+          .strokeBorder(ThemeGrid.line, lineWidth: Theme.Borders.thin)
+      }
+    } else {
+      self
+    }
+  }
+
   /// Always-on left/right grid rails at `Theme.Layout.pageMargin`.
   func pageMargins() -> some View {
     modifier(PageMarginsModifier())

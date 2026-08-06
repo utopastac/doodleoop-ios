@@ -297,11 +297,16 @@ struct AvatarSetupView: View {
         tool: tool,
         colorHex: colorHex,
         lineWidth: widthByTool[tool] ?? tool.defaultWidth,
+        showsBorder: false,
         onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
       .aspectRatio(1, contentMode: .fit)
       .clipShape(Circle())
       .contentShape(Circle())
+      .overlay {
+        Circle()
+          .strokeBorder(ThemeGrid.line, lineWidth: Theme.Borders.thin)
+      }
       .frame(maxWidth: .infinity)
       .overlay(alignment: .topTrailing) {
         clearButton

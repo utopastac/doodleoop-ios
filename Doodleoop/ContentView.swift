@@ -115,7 +115,9 @@ struct ContentView: View {
   private var gameFlow: some View {
     // Leave chrome sits outside the phase swap so it doesn't slide with the pad.
     // Switch on mirrored `phase` so pad submits don't rebuild this shell.
-    ZStack {
+    // Connection strip / status banner live at the bottom and reserve space so
+    // phase content shifts up instead of being covered.
+    VStack(spacing: 0) {
       Group {
         switch session.phase {
         case .lobby:
@@ -143,28 +145,39 @@ struct ContentView: View {
           }
         }
       }
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-      VStack(spacing: Theme.Spacing.s2) {
-        if session.showsConnectionStrip {
-          ConnectionPresenceStrip(presences: session.connectionPresences)
-            .padding(.top, usesInlineLeave ? Theme.Spacing.s8 : Theme.Spacing.s2)
-            .transition(.move(edge: .top).combined(with: .opacity))
-        }
-
-        if let banner = session.statusBanner, !session.isReconnecting {
-          SessionStatusBanner(text: banner) {
-            session.clearStatusBanner()
-          }
-          .transition(.move(edge: .top).combined(with: .opacity))
-        }
-
-        Spacer()
+      if showsBottomConnectionChrome {
+        bottomConnectionChrome
+          .padding(.top, Theme.Spacing.s2)
+          .padding(.bottom, Theme.Spacing.s2)
+          .transition(.move(edge: .bottom).combined(with: .opacity))
       }
-      .zIndex(2)
     }
     .animation(Theme.Motion.handoff, value: session.statusBanner)
     .animation(Theme.Motion.handoff, value: session.showsConnectionStrip)
     .leaveGameChrome(isEnabled: !usesInlineLeave)
+  }
+
+  private var showsBottomConnectionChrome: Bool {
+    if session.showsConnectionStrip { return true }
+    if session.statusBanner != nil, !session.isReconnecting { return true }
+    return false
+  }
+
+  @ViewBuilder
+  private var bottomConnectionChrome: some View {
+    VStack(spacing: Theme.Spacing.s2) {
+      if session.showsConnectionStrip {
+        ConnectionPresenceStrip(presences: session.connectionPresences)
+      }
+
+      if let banner = session.statusBanner, !session.isReconnecting {
+        SessionStatusBanner(text: banner) {
+          session.clearStatusBanner()
+        }
+      }
+    }
   }
 
   /// Pads pass left: outgoing exits leading, incoming enters from trailing.

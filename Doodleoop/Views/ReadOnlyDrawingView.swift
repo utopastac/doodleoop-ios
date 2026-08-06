@@ -20,7 +20,9 @@ struct ReadOnlyDrawingView: View {
     )
     return Group {
       if showsPaper {
-        canvas.paperSurface(in: Rectangle())
+        canvas
+          .paperSurface(in: Rectangle())
+          .drawingCanvasBorder()
       } else {
         canvas
       }

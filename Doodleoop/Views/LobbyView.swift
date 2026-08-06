@@ -15,39 +15,19 @@ struct LobbyView: View {
     session.isHost && state.players.count >= 2 && state.phase == .lobby
   }
 
+  /// Joiner is still hunting for a host — dedicated Find a game screen (Figma).
+  private var isFindingGame: Bool {
+    session.role == .joiner && (session.state == nil || state.players.isEmpty)
+  }
+
   var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      LeaveToolbarBand()
-        .gridBand()
-
-      // Title (80) + settings (64) share one block before the players rail.
-      titleBlock
-      settingsRow
-
-      GridLine(axis: .horizontal)
-
-      playerList
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-
-      if session.role == .joiner, session.state == nil || state.players.isEmpty {
-        joinerBrowsing
-          .padding(.bottom, Theme.Spacing.s4)
-      }
-
-      addPlayerRow
-        .padding(.top, Theme.Spacing.s3)
-        .padding(.bottom, Theme.Spacing.s3)
-
-      if session.isHost {
-        Button(DoodleLabel.bracketed("Start game")) {
-          showCategorySheet = true
-        }
-        .doodleButton(.primary)
-        .disabled(!canStart)
-        .padding(.bottom, Theme.Spacing.s3)
+    Group {
+      if isFindingGame {
+        findAGameContent
+      } else {
+        inLobbyContent
       }
     }
-    .pageHorizontalPadding()
     .paperBackground()
     .pageMargins()
     .onChange(of: state.players.count) { _, count in
@@ -80,6 +60,151 @@ struct LobbyView: View {
       guessSeconds: state.guessTimeLimitSeconds,
       maxRounds: capped
     )
+  }
+
+  // MARK: - Find a game (joiner browse)
+
+  private var findAGameContent: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      findAGameTopBar
+        .gridBand()
+
+      Text("Find a game")
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s11, maxHeight: Theme.Spacing.s11, alignment: .leading)
+        .accessibilityAddTraits(.isHeader)
+
+      GridLine(axis: .horizontal)
+
+      findAGameList
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+    .pageHorizontalPadding()
+  }
+
+  private var findAGameTopBar: some View {
+    HStack(spacing: 0) {
+      DoodleIconButton(
+        phosphor: .arrowLeft,
+        accessibilityLabel: "Back"
+      ) {
+        session.leaveGame()
+      }
+      Spacer(minLength: 0)
+    }
+    .frame(height: Theme.Spacing.s8)
+  }
+
+  private var findAGameList: some View {
+    ScrollView {
+      VStack(alignment: .leading, spacing: 0) {
+        Text(findAGameSectionTitle)
+          .themeText(.labelSmall)
+          .foregroundStyle(Theme.Text.primary)
+          .textCase(.uppercase)
+          .tracking(Theme.FontSize.footnote * 0.07)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .frame(height: Theme.Spacing.s8, alignment: .center)
+          .accessibilityAddTraits(.updatesFrequently)
+
+        switch session.joinStatus {
+        case .connecting(let name):
+          Text("Connecting to \(name)…")
+            .themeText(.caption)
+            .foregroundStyle(Theme.Text.secondary)
+            .padding(.vertical, Theme.Spacing.s1)
+        case .failed(let message):
+          VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
+            Text(message)
+              .themeText(.caption)
+              .foregroundStyle(Theme.Text.secondary)
+            Button(DoodleLabel.bracketed("Keep looking")) {
+              session.dismissJoinFailure()
+            }
+            .doodleButton(.secondary)
+          }
+          .padding(.vertical, Theme.Spacing.s1)
+        case .browsing, .idle:
+          ForEach(session.discoveredPeers) { peer in
+            discoveredGameRow(peer)
+          }
+        }
+      }
+    }
+  }
+
+  private var findAGameSectionTitle: String {
+    switch session.joinStatus {
+    case .connecting:
+      return "Connecting…"
+    case .failed:
+      return "Couldn’t join"
+    case .browsing, .idle:
+      let count = session.discoveredPeers.count
+      if count == 0 {
+        return "Looking for games..."
+      }
+      return count == 1 ? "1 Game" : "\(count) Games"
+    }
+  }
+
+  private func discoveredGameRow(_ peer: DiscoveredPeer) -> some View {
+    let isConnecting: Bool = {
+      if case .connecting = session.joinStatus { return true }
+      return false
+    }()
+
+    return HStack(spacing: Theme.Spacing.s3) {
+      AvatarBadge(drawing: .empty, size: Theme.Spacing.s9)
+
+      Text("\(peer.displayName)’s game")
+        .themeText(.body)
+        .foregroundStyle(Theme.Text.primary)
+        .lineLimit(1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+
+      Button(DoodleLabel.bracketed("Join")) {
+        session.join(peer)
+      }
+      .doodleButton(.primary)
+      .fixedSize(horizontal: true, vertical: false)
+      .disabled(isConnecting)
+    }
+    .padding(.vertical, Theme.Spacing.s1)
+    .accessibilityElement(children: .combine)
+  }
+
+  // MARK: - In lobby (host / joined)
+
+  private var inLobbyContent: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      LeaveToolbarBand()
+        .gridBand()
+
+      // Title (80) + settings (64) share one block before the players rail.
+      titleBlock
+      settingsRow
+
+      GridLine(axis: .horizontal)
+
+      playerList
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+      addPlayerRow
+        .padding(.top, Theme.Spacing.s3)
+        .padding(.bottom, Theme.Spacing.s3)
+
+      if session.isHost {
+        Button(DoodleLabel.bracketed("Start game")) {
+          showCategorySheet = true
+        }
+        .doodleButton(.primary)
+        .disabled(!canStart)
+        .padding(.bottom, Theme.Spacing.s3)
+      }
+    }
+    .pageHorizontalPadding()
   }
 
   // MARK: - Header
@@ -247,13 +372,12 @@ struct LobbyView: View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
         Text("\(state.players.count) Players")
-          .themeText(.bodyStrong)
+          .themeText(.labelSmall)
           .foregroundStyle(Theme.Text.primary)
           .textCase(.uppercase)
-          .tracking(Theme.FontSize.body * 0.05)
+          .tracking(Theme.FontSize.footnote * 0.07)
           .frame(maxWidth: .infinity, alignment: .leading)
           .frame(height: Theme.Spacing.s8, alignment: .center)
-          .padding(.horizontal, Theme.Spacing.s2)
 
         ForEach(state.players) { player in
           playerRow(player)
@@ -290,11 +414,10 @@ struct LobbyView: View {
         }
       }
     }
-    .padding(.horizontal, Theme.Spacing.s2)
     .padding(.vertical, Theme.Spacing.s1)
   }
 
-  // MARK: - Add / join
+  // MARK: - Add seat
 
   private var addPlayerRow: some View {
     HStack(spacing: Theme.Spacing.s2) {
@@ -306,56 +429,6 @@ struct LobbyView: View {
       .doodleButton(.secondary)
       .fixedSize(horizontal: true, vertical: false)
       .disabled(session.state == nil || state.phase != .lobby)
-    }
-  }
-
-  private var joinerBrowsing: some View {
-    VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
-      switch session.joinStatus {
-      case .connecting(let name):
-        ProgressView("Connecting to \(name)…")
-          .tint(Theme.Accent.default)
-      case .failed(let message):
-        Text(message)
-          .themeText(.caption)
-          .foregroundStyle(Theme.Text.secondary)
-        Button(DoodleLabel.bracketed("Keep looking")) {
-          session.dismissJoinFailure()
-        }
-        .doodleButton(.secondary)
-      case .browsing, .idle:
-        if session.discoveredPeers.isEmpty {
-          HStack(spacing: Theme.Spacing.s2) {
-            PhosphorIcon.wifiHigh.image
-              .resizable()
-              .renderingMode(.template)
-              .scaledToFit()
-              .frame(width: Theme.Sizing.iconMd, height: Theme.Sizing.iconMd)
-              .foregroundStyle(Theme.Accent.default)
-            ProgressView("Looking for games…")
-              .tint(Theme.Accent.default)
-          }
-          Text("Phones need to be nearby with Local Network on for Doodleoop.")
-            .themeText(.caption)
-            .foregroundStyle(Theme.Text.tertiary)
-        } else {
-          Text("Nearby games")
-            .themeText(.bodyStrong)
-            .foregroundStyle(Theme.Text.primary)
-            .textCase(.uppercase)
-
-          ForEach(session.discoveredPeers) { peer in
-            Button(peer.displayName) {
-              session.join(peer)
-            }
-            .doodleButton(.secondary)
-            .disabled({
-              if case .connecting = session.joinStatus { return true }
-              return false
-            }())
-          }
-        }
-      }
     }
   }
 

@@ -39,8 +39,8 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     switch self {
     case .lobbyPassAndPlay: return "Lobby — Multi-seat"
     case .lobbyNearbyHost: return "Lobby — Host"
-    case .lobbyNearbyJoiner: return "Lobby — Joiner"
-    case .lobbyNearbyGameFound: return "Lobby — Game Found"
+    case .lobbyNearbyJoiner: return "Find a game — Looking"
+    case .lobbyNearbyGameFound: return "Find a game — Found"
     case .drawing: return "Drawing — Category"
     case .drawingFromGuess: return "Drawing — From guess"
     case .guessing: return "Guessing"
@@ -56,8 +56,8 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     switch self {
     case .lobbyPassAndPlay: return "Host lobby with several seats on one phone"
     case .lobbyNearbyHost: return "Host lobby with players on separate phones"
-    case .lobbyNearbyJoiner: return "Searching for nearby games"
-    case .lobbyNearbyGameFound: return "Tap a nearby host to join"
+    case .lobbyNearbyJoiner: return "Empty browse — looking for games"
+    case .lobbyNearbyGameFound: return "Nearby host row with Join"
     case .drawing: return "First turn — draw the shared category"
     case .drawingFromGuess: return "Later turn — draw someone else's guess"
     case .guessing: return "What is this a drawing of?"

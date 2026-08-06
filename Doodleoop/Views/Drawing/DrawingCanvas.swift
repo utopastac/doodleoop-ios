@@ -54,6 +54,8 @@ struct DrawingCanvas: View {
   var lineWidth: Double
   /// Optional override; defaults to the app-wide paper preference.
   var paperStyle: PaperStyle? = nil
+  /// Square edge in `ThemeGrid.line`. Off for circle-clipped avatar setup.
+  var showsBorder: Bool = true
   var onWillCommitStroke: (() -> Void)?
 
   @Environment(\.displayScale) private var displayScale
@@ -96,6 +98,7 @@ struct DrawingCanvas: View {
       }
     }
     .paperSurface(resolvedPaperStyle, in: Rectangle())
+    .drawingCanvasBorder(showsBorder)
     .background {
       GeometryReader { geo in
         Color.clear

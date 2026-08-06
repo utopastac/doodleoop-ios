@@ -107,7 +107,7 @@ final class GameSession {
     if isReconnecting || isMigratingHost { return true }
     if !reconnectingDeviceIds.isEmpty { return true }
     if let state, !state.absentDeviceIds.isEmpty { return true }
-    // Host in-game: show remotes. Skip lobby so we don't cover LeaveToolbarBand.
+    // Host in-game: show remotes. Skip lobby when everyone is connected.
     if isHost, phase != nil, phase != .lobby {
       return connectionPresences.contains { !$0.isLocal }
     }
