@@ -54,26 +54,23 @@ enum StrokeRenderer {
   private static func catmullRom(
     _ p0: CGPoint, _ p1: CGPoint, _ p2: CGPoint, _ p3: CGPoint, _ t: CGFloat
   ) -> CGPoint {
-    let t2 = t * t
-    let t3 = t2 * t
-    return CGPoint(
-      x: 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t
-        + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2
-        + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3),
-      y: 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t
-        + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2
-        + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3)
+    CGPoint(
+      x: catmullRom(p0.x, p1.x, p2.x, p3.x, t),
+      y: catmullRom(p0.y, p1.y, p2.y, p3.y, t)
     )
   }
 
+  /// Terms are split so the type checker finishes on the CI compiler.
   private static func catmullRom(
     _ w0: CGFloat, _ w1: CGFloat, _ w2: CGFloat, _ w3: CGFloat, _ t: CGFloat
   ) -> CGFloat {
-    let t2 = t * t
-    let t3 = t2 * t
-    return 0.5 * ((2 * w1) + (-w0 + w2) * t
-      + (2 * w0 - 5 * w1 + 4 * w2 - w3) * t2
-      + (-w0 + 3 * w1 - 3 * w2 + w3) * t3)
+    let t2: CGFloat = t * t
+    let t3: CGFloat = t2 * t
+    let a: CGFloat = 2 * w1
+    let b: CGFloat = (w2 - w0) * t
+    let c: CGFloat = ((2 * w0) - (5 * w1) + (4 * w2) - w3) * t2
+    let d: CGFloat = ((3 * w1) - w0 - (3 * w2) + w3) * t3
+    return 0.5 * (a + b + c + d)
   }
 
   /// Soften finger jitter before fitting the spline.
