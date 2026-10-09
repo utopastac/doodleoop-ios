@@ -47,6 +47,9 @@ struct HomeView: View {
           showHistory = true
         }
       }
+      .sheet(isPresented: $showRules) {
+        RulesSheet()
+      }
       .sheet(isPresented: $showSettings) {
         AppSettingsView()
       }
@@ -206,11 +209,6 @@ struct HomeView: View {
       .frame(width: geo.size.width, height: geo.size.height)
     }
     .pageMargins()
-    .alert("The rules", isPresented: $showRules) {
-      Button("Got it", role: .cancel) {}
-    } message: {
-      Text("Draw the category, pass left, guess what’s in front of you, then draw that guess. Keep going until the loop comes back around.")
-    }
   }
 }
 

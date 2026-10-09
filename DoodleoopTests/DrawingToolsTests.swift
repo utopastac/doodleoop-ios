@@ -696,3 +696,19 @@ final class DrawingToolsTests: XCTestCase {
     }
   }
 }
+
+final class DrawPromptGateTests: XCTestCase {
+  func testSingleWordPromptOpensCover() {
+    XCTAssertEqual(DrawPromptGate.word(in: "cat"), "cat")
+    XCTAssertEqual(DrawPromptGate.word(in: "  Pets  "), "Pets")
+    XCTAssertEqual(DrawPromptGate.headline(for: "cat"), "Draw a cat")
+    XCTAssertEqual(DrawPromptGate.headline(for: "Pets"), "Draw a Pets")
+  }
+
+  func testPhraseAndBlankPromptsAreNotWords() {
+    XCTAssertNil(DrawPromptGate.word(in: "Farm animals"))
+    XCTAssertNil(DrawPromptGate.word(in: "hot dog"))
+    XCTAssertNil(DrawPromptGate.word(in: ""))
+    XCTAssertNil(DrawPromptGate.word(in: "   "))
+  }
+}

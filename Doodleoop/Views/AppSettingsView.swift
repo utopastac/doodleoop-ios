@@ -44,7 +44,7 @@ struct AppSettingsView: View {
 
           GridLine(axis: .horizontal)
 
-          section("About") {
+          section {
             VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
               linkRow(title: "Privacy Policy", url: AppLinks.privacy)
               linkRow(title: "Support", url: AppLinks.support)
@@ -83,16 +83,18 @@ struct AppSettingsView: View {
   }
 
   private func section<Content: View>(
-    _ title: String,
+    _ title: String? = nil,
     @ViewBuilder content: () -> Content
   ) -> some View {
     VStack(alignment: .leading, spacing: Theme.Spacing.s4) {
-      Text(title)
-        .themeText(.body)
-        .foregroundStyle(Theme.Text.primary)
-        .frame(height: Theme.Sizing.inputHeight, alignment: .leading)
-        .pageHorizontalPadding()
-        .accessibilityAddTraits(.isHeader)
+      if let title {
+        Text(title)
+          .themeText(.body)
+          .foregroundStyle(Theme.Text.primary)
+          .frame(height: Theme.Sizing.inputHeight, alignment: .leading)
+          .pageHorizontalPadding()
+          .accessibilityAddTraits(.isHeader)
+      }
 
       content()
     }

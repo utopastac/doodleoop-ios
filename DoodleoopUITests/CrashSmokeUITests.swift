@@ -50,9 +50,12 @@ final class CrashSmokeUITests: XCTestCase {
     rules.tap()
     assertAlive(app)
 
-    let gotIt = app.alerts.buttons["Got it"]
-    XCTAssertTrue(gotIt.waitForExistence(timeout: 5), "Expected Got it on rules alert")
-    gotIt.tap()
+    let sheet = app.descendants(matching: .any)["rules-sheet"]
+    XCTAssertTrue(sheet.waitForExistence(timeout: 5), "Expected the rules sheet")
+
+    let dismiss = app.buttons["sheet-dismiss"]
+    XCTAssertTrue(dismiss.waitForExistence(timeout: 5), "Expected Done on rules sheet")
+    dismiss.tap()
     assertAlive(app)
   }
 

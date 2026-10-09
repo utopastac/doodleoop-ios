@@ -38,6 +38,7 @@
 		77EC16390D58E32F5E61C464 /* ZoomableDrawingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 163B051C98AE6C226EE6563B /* ZoomableDrawingView.swift */; };
 		79FBF6580C3DC193104BF41C /* NetworkMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD68ECCF5EFF6B59975F7558 /* NetworkMessage.swift */; };
 		7BED6908D2648759E3138893 /* RevealView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */; };
+		8E2C14A07B5D9F31C6A048E2 /* RulesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4F81B09A6E27D53B0C19574 /* RulesSheet.swift */; };
 		7C9A6A496429E4F13EE63F91 /* GameMessageTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5182D55609EA4E55902053FE /* GameMessageTransport.swift */; };
 		7FF714B66A84E6E07C2F8518 /* GameEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */; };
 		8718E0FDBEC7EC93635F044C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C197988DB66529732A5329B /* ContentView.swift */; };
@@ -121,6 +122,7 @@
 		5F2D71BE6EB185EB95CC4F55 /* AppLifecyclePhase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLifecyclePhase.swift; sourceTree = "<group>"; };
 		67BFA80C39CACEBFE64548A1 /* SeatHandoff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeatHandoff.swift; sourceTree = "<group>"; };
 		6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RevealView.swift; sourceTree = "<group>"; };
+		C4F81B09A6E27D53B0C19574 /* RulesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RulesSheet.swift; sourceTree = "<group>"; };
 		704B9E72B6E409BE7AB595E7 /* DrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingView.swift; sourceTree = "<group>"; };
 		778094D4954FEA2A50926A2B /* Fraunces_72pt-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Fraunces_72pt-Bold.ttf"; sourceTree = "<group>"; };
 		7786F8849BC7B3AC2C843D86 /* NetworkPartyTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPartyTransport.swift; sourceTree = "<group>"; };
@@ -311,6 +313,7 @@
 				FB49763079055AC062F95D2E /* PhaseTimer.swift */,
 				824E8B0B80107A0F58F5A186 /* ReadOnlyDrawingView.swift */,
 				6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */,
+				C4F81B09A6E27D53B0C19574 /* RulesSheet.swift */,
 				CC10F2CA41DE3E9D91A872FB /* ViewPreviewMenuView.swift */,
 				163B051C98AE6C226EE6563B /* ZoomableDrawingView.swift */,
 				43E444EA05A6F2FEB21E75DD /* Drawing */,
@@ -502,6 +505,7 @@
 				F94E1265431FF8445488A1E6 /* PreviewStateFactory.swift in Sources */,
 				74530BD42FFF132755EEB237 /* ReadOnlyDrawingView.swift in Sources */,
 				7BED6908D2648759E3138893 /* RevealView.swift in Sources */,
+				8E2C14A07B5D9F31C6A048E2 /* RulesSheet.swift in Sources */,
 				3344670A90DE2BD7C62449B8 /* RoundCategories.swift in Sources */,
 				D3E0206FAC6A592C839B35B4 /* SavedGame.swift in Sources */,
 				35FA9C1469D1FF816DBE2064 /* SeatHandoff.swift in Sources */,

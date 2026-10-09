@@ -11,6 +11,8 @@ struct DrawingView: View {
   )
   /// Optimistic submit so joiners see the wait UI before `syncState` lands.
   @State private var locallySubmittedForPlayerId: String?
+  /// Word prompt already dismissed for this turn (`Draw a …` cover).
+  @State private var acknowledgedWord: String?
 
   var body: some View {
     let state = session.state
@@ -30,12 +32,18 @@ struct DrawingView: View {
       }
     }()
     let canSubmit = !drawing.isEmpty && !hasSubmitted
+    let promptWord = DrawPromptGate.word(in: prompt)
 
     Group {
       if hasSubmitted {
         WaitingForPlayersView(endsAt: state?.phaseEndsAt)
       } else {
-        drawingContent(prompt: prompt, canSubmit: canSubmit, endsAt: state?.phaseEndsAt)
+        drawingContent(
+          prompt: prompt,
+          promptWord: promptWord,
+          canSubmit: canSubmit,
+          endsAt: state?.phaseEndsAt
+        )
       }
     }
     .paperBackground()
@@ -45,8 +53,15 @@ struct DrawingView: View {
     }
   }
 
-  private func drawingContent(prompt: String, canSubmit: Bool, endsAt: Date?) -> some View {
-    VStack(spacing: 0) {
+  private func drawingContent(
+    prompt: String,
+    promptWord: String?,
+    canSubmit: Bool,
+    endsAt: Date?
+  ) -> some View {
+    let showsPromptCover = promptWord != nil && acknowledgedWord != promptWord
+
+    return VStack(spacing: 0) {
       Text(prompt)
         .themeText(.body)
         .multilineTextAlignment(.leading)
@@ -63,12 +78,20 @@ struct DrawingView: View {
         tool: tool,
         colorHex: colorHex,
         lineWidth: widthByTool[tool] ?? tool.defaultWidth,
+        acceptsDrawing: !showsPromptCover,
         onWillCommitStroke: { undoStack.registerStrokeAdded() }
       )
       .aspectRatio(1, contentMode: .fit)
       .frame(maxWidth: .infinity)
       .overlay(alignment: .topTrailing) {
         clearButton
+      }
+      .overlay {
+        if let promptWord, showsPromptCover {
+          DrawWordPromptCover(word: promptWord) {
+            acknowledgedWord = promptWord
+          }
+        }
       }
       .pageHorizontalPadding()
 
@@ -129,5 +152,44 @@ struct DrawingView: View {
           !state.submittedPlayerIds.contains(session.localPlayerId),
           !drawing.isEmpty else { return }
     commitDrawing()
+  }
+}
+
+/// A drawing prompt is a word when it is one token. Phrases stay in the header.
+enum DrawPromptGate {
+  static func word(in prompt: String) -> String? {
+    let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    guard trimmed.split(whereSeparator: \.isWhitespace).count == 1 else { return nil }
+    return trimmed
+  }
+
+  static func headline(for word: String) -> String {
+    "Draw a \(word)"
+  }
+}
+
+/// Ink panel over the canvas until the player acknowledges a one-word prompt.
+private struct DrawWordPromptCover: View {
+  let word: String
+  let onConfirm: () -> Void
+
+  var body: some View {
+    VStack(spacing: Theme.Spacing.s6) {
+      Text(DrawPromptGate.headline(for: word))
+        .themeText(.display)
+        .foregroundStyle(Theme.Paper.white)
+        .multilineTextAlignment(.center)
+        .minimumScaleFactor(0.4)
+        .padding(.horizontal, Theme.Spacing.s4)
+
+      Button(DoodleLabel.bracketed("OK"), action: onConfirm)
+        .doodleButton(.tertiary)
+        .padding(.horizontal, Theme.Spacing.s5)
+        .accessibilityIdentifier("draw-prompt-ok")
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Theme.Ink.deep)
+    .accessibilityIdentifier("draw-prompt-cover")
   }
 }

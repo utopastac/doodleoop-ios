@@ -192,6 +192,8 @@ struct DrawingCanvas: View {
   var tool: DrawingTool
   var colorHex: String
   var lineWidth: Double
+  /// When false, finger input is ignored (word-prompt cover sits on top).
+  var acceptsDrawing: Bool = true
   /// Optional override; defaults to the app-wide paper preference.
   var paperStyle: PaperStyle? = nil
   /// Square edge in `ThemeGrid.line`. Off for circle-clipped avatar setup.
@@ -254,6 +256,7 @@ struct DrawingCanvas: View {
     .overlay {
       // UIKit coalesced touches keep fast strokes dense; SwiftUI DragGesture cannot.
       StrokeTouchCapture(
+        acceptsDrawing: acceptsDrawing,
         onSamples: { samples, size in
           for sample in samples {
             appendSample(sample.location, timestamp: sample.timestamp, in: size)
@@ -263,6 +266,11 @@ struct DrawingCanvas: View {
           finishStroke(at: location, in: size)
         }
       )
+    }
+    .onChange(of: acceptsDrawing) { _, enabled in
+      if !enabled {
+        liveStroke = LiveStrokeSession()
+      }
     }
   }
 
@@ -322,6 +330,7 @@ private struct StrokeTouchCapture: UIViewRepresentable {
     var timestamp: TimeInterval
   }
 
+  var acceptsDrawing: Bool
   var onSamples: ([Sample], CGSize) -> Void
   var onEnded: (CGPoint, CGSize) -> Void
 
@@ -330,12 +339,14 @@ private struct StrokeTouchCapture: UIViewRepresentable {
     view.isMultipleTouchEnabled = false
     view.backgroundColor = .clear
     view.isOpaque = false
+    view.isUserInteractionEnabled = acceptsDrawing
     view.onSamples = onSamples
     view.onEnded = onEnded
     return view
   }
 
   func updateUIView(_ uiView: TouchView, context: Context) {
+    uiView.isUserInteractionEnabled = acceptsDrawing
     uiView.onSamples = onSamples
     uiView.onEnded = onEnded
   }
