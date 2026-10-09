@@ -36,6 +36,7 @@ enum PreviewStateFactory {
     lobby.phase = .lobby
     lobby.players = players
     lobby.hostId = players.first?.id ?? ""
+    lobby.joinCode = GamePartyLimits.makeJoinCode()
     return lobby
   }
 
@@ -94,7 +95,7 @@ enum PreviewStateFactory {
         now: now
       )
     }
-    return next
+    return GameEngine.startNextTurn(in: next, now: now)
   }
 
   static func guessingState(
@@ -117,7 +118,7 @@ enum PreviewStateFactory {
         now: now
       )
     }
-    return next
+    return GameEngine.startNextTurn(in: next, now: now)
   }
 
   static func revealState(
@@ -135,8 +136,12 @@ enum PreviewStateFactory {
     )
     next = GameEngine.startRound(category: "Things that float", in: next, now: now)
 
-    // Drive a full loop: draw → guess → draw → guess.
-    while next.phase == .drawing || next.phase == .guessing {
+    // Drive a full loop: draw → pass → guess → pass → draw → …
+    while next.phase == .drawing || next.phase == .guessing || next.phase == .passing {
+      if next.phase == .passing {
+        next = GameEngine.startNextTurn(in: next, now: now)
+        continue
+      }
       let turn = next.turnIndex
       for (index, player) in next.players.enumerated() {
         if next.phase == .drawing {

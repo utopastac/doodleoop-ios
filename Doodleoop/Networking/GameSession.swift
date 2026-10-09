@@ -37,6 +37,9 @@ final class GameSession {
 
   let historyStore: GameHistoryStore
 
+  /// Join code for the active room (host-created, synced after join).
+  var joinCode: String { state?.joinCode ?? rememberedJoinCode }
+
   private var transport: (any PartyTransport)?
   private var messageTransport: GameMessageTransport?
   /// Transport peer key → durable `deviceId`.
@@ -48,6 +51,8 @@ final class GameSession {
   private var disconnectGraceSeconds: TimeInterval = 15
   /// Prior network host while seeking a migrated successor.
   private var migrationPreviousHostDeviceId: String?
+  /// Code the joiner entered (and keeps for reconnect hellos).
+  private var rememberedJoinCode: String = ""
 
   enum Role: Equatable {
     case idle
@@ -148,6 +153,8 @@ final class GameSession {
     lobby.roomId = UUID().uuidString
     lobby.networkHostDeviceId = devicePlayerId
     lobby.stateEpoch = 1
+    lobby.joinCode = GamePartyLimits.makeJoinCode()
+    rememberedJoinCode = lobby.joinCode
     lobby = GameEngine.addPlayer(
       id: devicePlayerId,
       name: localDisplayName,
@@ -169,8 +176,15 @@ final class GameSession {
     attachJoinerTransport()
   }
 
-  func join(_ peer: DiscoveredPeer) {
+  /// Connect to a discovered host after the player enters the spoken join code.
+  func join(_ peer: DiscoveredPeer, code: String) {
     guard role == .joiner else { return }
+    let normalized = Self.normalizedJoinCode(code)
+    guard normalized.count == GamePartyLimits.joinCodeLength else {
+      joinStatus = .failed(message: SessionAlert.badJoinCode(peerName: peer.displayName).message)
+      return
+    }
+    rememberedJoinCode = normalized
     joinStatus = .connecting(to: peer.displayName)
     transport?.connect(to: peer)
   }
@@ -240,6 +254,7 @@ final class GameSession {
     handoff = nil
     joinStatus = .idle
     role = .idle
+    rememberedJoinCode = ""
     if clearState {
       state = nil
       phase = nil
@@ -260,7 +275,7 @@ final class GameSession {
   }
 
   func updateDisplayName(_ name: String) {
-    let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(16))
+    let trimmed = GamePartyLimits.sanitizedName(name, fallback: "")
     guard !trimmed.isEmpty else { return }
     localDisplayName = trimmed
     UserDefaults.standard.set(trimmed, forKey: "displayName")
@@ -290,17 +305,18 @@ final class GameSession {
 
   func addLocalSeat(name: String) {
     let seatId = UUID().uuidString
-    let trimmed = String(name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(16))
-    let seatName = trimmed.isEmpty ? "Player" : trimmed
+    let seatName = GamePartyLimits.sanitizedName(name)
     guard var current = state, current.phase == .lobby else { return }
+    guard current.players.count < GamePartyLimits.maxPlayers else { return }
     if isHost {
-      current = GameEngine.addPlayer(
+      let next = GameEngine.addPlayer(
         id: seatId,
         name: seatName,
         deviceId: devicePlayerId,
         to: current
       )
-      sync(current)
+      guard next != current else { return }
+      sync(next)
     } else {
       send(.addPlayer(playerId: seatId, name: seatName))
     }
@@ -336,6 +352,13 @@ final class GameSession {
     prepareLocalHandoffIfNeeded()
   }
 
+  func startNextTurn() {
+    guard isHost, var current = state else { return }
+    current = GameEngine.startNextTurn(in: current)
+    sync(current)
+    prepareLocalHandoffIfNeeded()
+  }
+
   func submitDrawing(_ drawing: Drawing) {
     guard var current = state else { return }
     if isHost {
@@ -359,13 +382,10 @@ final class GameSession {
   }
 
   func advanceReveal() {
-    guard var current = state else { return }
-    if isHost {
-      current = GameEngine.advanceReveal(in: current)
-      sync(current)
-    } else {
-      send(.advanceReveal)
-    }
+    // Reveal pacing is host-authoritative — joiners wait for syncState.
+    guard isHost, var current = state else { return }
+    current = GameEngine.advanceReveal(in: current)
+    sync(current)
   }
 
   func returnToLobby() {
@@ -756,7 +776,7 @@ final class GameSession {
       switch newState.phase {
       case .lobby, .roundOver:
         payload = newState
-      case .drawing, .guessing, .reveal:
+      case .drawing, .guessing, .passing, .reveal:
         payload = newState.strippingAvatars()
       }
     }
@@ -776,6 +796,9 @@ final class GameSession {
       }
     }
     state = merged
+    if !merged.joinCode.isEmpty {
+      rememberedJoinCode = merged.joinCode
+    }
     if phase != merged.phase {
       phase = merged.phase
     }
@@ -916,10 +939,32 @@ extension GameSession: PartyTransportDelegate {
     let peerDevice = peerDeviceIds[peerKey] ?? peerKey
 
     switch message {
-    case .hello(let playerId, let name, let avatar):
+    case .hello(let playerId, let name, let avatar, let joinCode):
+      guard Self.normalizedJoinCode(joinCode) == current.joinCode,
+            !current.joinCode.isEmpty else {
+        transport?.disconnectPeer(peerKey)
+        return
+      }
+
       // Drop mid-round strangers (lobby-only joins).
       let isReturning = current.players.contains(where: { $0.deviceId == playerId })
       if !isReturning, current.phase != .lobby {
+        transport?.disconnectPeer(peerKey)
+        return
+      }
+
+      // Reject spoofed reclaim while another live connection still owns this device.
+      let hasLiveClaim = peerDeviceIds.contains { $0.value == playerId && $0.key != peerKey }
+      if hasLiveClaim {
+        let canReplace = reconnectingDeviceIds.contains(playerId)
+          || current.absentDeviceIds.contains(playerId)
+        guard canReplace else {
+          transport?.disconnectPeer(peerKey)
+          return
+        }
+      }
+
+      if !isReturning, current.players.count >= GamePartyLimits.maxPlayers {
         transport?.disconnectPeer(peerKey)
         return
       }
@@ -934,18 +979,22 @@ extension GameSession: PartyTransportDelegate {
         if !avatar.isEmpty {
           current = GameEngine.updateAvatar(playerId: playerId, avatar: avatar, in: current)
         }
-        statusBanner = "\(name) is back"
+        statusBanner = "\(GamePartyLimits.sanitizedName(name)) is back"
         sync(current, includeAvatars: true)
         return
       }
-      current = GameEngine.addPlayer(
+      let next = GameEngine.addPlayer(
         id: playerId,
         name: name,
         deviceId: playerId,
         avatar: avatar,
         to: current
       )
-      sync(current)
+      guard next != current else {
+        transport?.disconnectPeer(peerKey)
+        return
+      }
+      sync(next)
 
     case .setName(let playerId, let name):
       guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
@@ -958,13 +1007,14 @@ extension GameSession: PartyTransportDelegate {
       sync(current)
 
     case .addPlayer(let playerId, let name):
-      current = GameEngine.addPlayer(
+      let next = GameEngine.addPlayer(
         id: playerId,
         name: name,
         deviceId: peerDevice,
         to: current
       )
-      sync(current)
+      guard next != current else { return }
+      sync(next)
 
     case .removePlayer(let playerId):
       guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
@@ -973,17 +1023,21 @@ extension GameSession: PartyTransportDelegate {
 
     case .submitDrawing(let playerId, let drawing):
       guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
+      let before = current
       current = GameEngine.submitDrawing(playerId: playerId, drawing: drawing, in: current)
+      guard current != before else { return }
       sync(current)
 
     case .submitGuess(let playerId, let text):
       guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
+      let before = current
       current = GameEngine.submitGuess(playerId: playerId, text: text, in: current)
+      guard current != before else { return }
       sync(current)
 
     case .advanceReveal:
-      current = GameEngine.advanceReveal(in: current)
-      sync(current)
+      // Only the host device advances reveal (local `advanceReveal()`).
+      break
 
     case .leave:
       // Intentional leave — finalize immediately (no grace).
@@ -1006,9 +1060,17 @@ extension GameSession: PartyTransportDelegate {
     switch linkState {
     case .connected:
       if role == .joiner {
-        joinStatus = .idle
+        // Stay `.connecting` until the first syncState so a rejected join code
+        // still surfaces as a join failure instead of a silent drop.
         cancelDisconnectGrace(key: "host")
-        send(.hello(playerId: devicePlayerId, name: localDisplayName, avatar: localAvatar))
+        send(
+          .hello(
+            playerId: devicePlayerId,
+            name: localDisplayName,
+            avatar: localAvatar,
+            joinCode: rememberedJoinCode
+          )
+        )
       } else if role == .host {
         cancelDisconnectGrace(key: peerKey)
       }
@@ -1109,6 +1171,11 @@ extension GameSession: PartyTransportDelegate {
 
   private func owns(_ playerId: String, peerDevice: String, in state: GameState) -> Bool {
     state.player(id: playerId)?.deviceId == peerDevice
+  }
+
+  private static func normalizedJoinCode(_ code: String) -> String {
+    let digits = code.filter(\.isNumber)
+    return String(digits.prefix(GamePartyLimits.joinCodeLength))
   }
 }
 

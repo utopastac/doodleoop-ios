@@ -3,18 +3,37 @@ import SwiftUI
 struct GuessingView: View {
   @Environment(GameSession.self) private var session
   @State private var guess = ""
+  /// Optimistic submit so joiners see the wait UI before `syncState` lands.
+  @State private var locallySubmittedForPlayerId: String?
 
   var body: some View {
+    let state = session.state
+    let hasSubmitted = locallySubmittedForPlayerId == session.localPlayerId
+      || (state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
+
+    Group {
+      if hasSubmitted {
+        WaitingForPlayersView(endsAt: state?.phaseEndsAt)
+      } else {
+        guessingContent(state: state)
+      }
+    }
+    .paperBackground()
+    .pageMargins()
+    .task(id: state?.phaseEndsAt) {
+      await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
+    }
+  }
+
+  private func guessingContent(state: GameState?) -> some View {
     let drawing: Drawing? = {
-      guard let state = session.state,
+      guard let state,
             let pad = state.pad(inFrontOf: session.localPlayerId),
             case .drawing(_, let art) = pad.steps.last else { return nil }
       return art
     }()
 
-    let state = session.state
-
-    VStack(spacing: Theme.Spacing.s4) {
+    return VStack(spacing: Theme.Spacing.s4) {
       HStack(alignment: .firstTextBaseline) {
         Text("Guess")
           .themeText(.heading)
@@ -39,32 +58,37 @@ struct GuessingView: View {
         .pageHorizontalPadding()
       } else {
         Spacer()
-        ProgressView("Waiting for drawing…")
-          .tint(Theme.Accent.default)
+        ShimmerText(text: "Waiting for drawing")
+          .multilineTextAlignment(.center)
+          .frame(maxWidth: .infinity)
         Spacer()
       }
 
       DoodleTextField(placeholder: "Your guess", text: $guess)
         .pageHorizontalPadding()
+        .onChange(of: guess) { _, next in
+          let capped = String(next.prefix(GamePartyLimits.maxGuessLength))
+          if capped != next { guess = capped }
+        }
 
       Button(DoodleLabel.bracketed("Submit guess")) {
-        session.submitGuess(guess)
-        guess = ""
+        commitGuess()
       }
       .doodleButton(.primary)
       .pageHorizontalPadding()
       .padding(.bottom, Theme.Spacing.s3)
-      .disabled(
-        guess.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-          || (state?.submittedPlayerIds.contains(session.localPlayerId) ?? false)
-      )
+      .disabled(guess.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+      .accessibilityIdentifier("submit-guess")
     }
     .padding(.top, Theme.Spacing.s5)
-    .paperBackground()
-    .pageMargins()
-    .task(id: state?.phaseEndsAt) {
-      await autoSubmitWhenTimerExpires(endsAt: state?.phaseEndsAt)
-    }
+  }
+
+  private func commitGuess() {
+    let trimmed = guess.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return }
+    locallySubmittedForPlayerId = session.localPlayerId
+    session.submitGuess(trimmed)
+    guess = ""
   }
 
   private func autoSubmitWhenTimerExpires(endsAt: Date?) async {
@@ -72,9 +96,9 @@ struct GuessingView: View {
     let trimmed = guess.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let state = session.state,
           state.phase == .guessing,
+          locallySubmittedForPlayerId != session.localPlayerId,
           !state.submittedPlayerIds.contains(session.localPlayerId),
           !trimmed.isEmpty else { return }
-    session.submitGuess(trimmed)
-    guess = ""
+    commitGuess()
   }
 }

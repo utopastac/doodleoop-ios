@@ -50,7 +50,7 @@ final class GameHistoryStoreTests: XCTestCase {
     let reloaded = GameHistoryStore(directory: directory)
     XCTAssertEqual(reloaded.games.count, 1)
     XCTAssertEqual(reloaded.games.first?.category, "Animals")
-    XCTAssertEqual(reloaded.games.first?.pads.count, 2)
+    XCTAssertEqual(reloaded.games.first?.pads.count, 3)
   }
 
   func testDeleteRemovesFile() {
@@ -69,11 +69,16 @@ final class GameHistoryStoreTests: XCTestCase {
     var state = GameState()
     state = GameEngine.addPlayer(id: "p0", name: "Ada", deviceId: "d0", to: state)
     state = GameEngine.addPlayer(id: "p1", name: "Bea", deviceId: "d1", to: state)
+    state = GameEngine.addPlayer(id: "p2", name: "Cyd", deviceId: "d2", to: state)
     state = GameEngine.startRound(category: "Animals", in: state)
 
-    while state.phase == .drawing || state.phase == .guessing {
+    while state.phase == .drawing || state.phase == .guessing || state.phase == .passing {
+      if state.phase == .passing {
+        state = GameEngine.startNextTurn(in: state)
+        continue
+      }
       let turn = state.turnIndex
-      for i in 0..<2 {
+      for i in 0..<3 {
         if turn % 2 == 0 {
           let drawing = Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.2, y: 0.3)])])
           state = GameEngine.submitDrawing(playerId: "p\(i)", drawing: drawing, in: state)

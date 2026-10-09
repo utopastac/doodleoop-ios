@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: DoodleoopTests
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: "26"
+
+      - name: Prepare iOS simulator runtime
+        run: |
+          # Warm CoreSimulator before platform installs (avoids flaky "Unable to connect").
+          xcrun simctl list > /dev/null || true
+          xcodebuild -downloadPlatform iOS -architectureVariant universal
+
+      - name: Resolve iPhone simulator destination
+        id: destination
+        run: |
+          set -euo pipefail
+          DESTINATION="$(
+            python3 - <<'PY'
+          import json, subprocess, sys
+
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"])
+          devices = json.loads(raw)["devices"]
+          candidates = []
+          for runtime, items in devices.items():
+              if "iOS" not in runtime:
+                  continue
+              for device in items:
+                  if not device.get("isAvailable"):
+                      continue
+                  name = device.get("name", "")
+                  if "iPhone" not in name:
+                      continue
+                  candidates.append((runtime, name, device["udid"]))
+
+          if not candidates:
+              sys.exit("No available iPhone simulator found")
+
+          # Prefer newer runtimes, then a plain "iPhone 17" if present.
+          candidates.sort(key=lambda item: (item[0], item[1]), reverse=True)
+          preferred = next((c for c in candidates if c[1] == "iPhone 17"), candidates[0])
+          print(f"platform=iOS Simulator,id={preferred[2]}")
+          print(f"Using {preferred[1]} ({preferred[0]})", file=sys.stderr)
+          PY
+          )"
+          echo "destination=${DESTINATION}" >> "$GITHUB_OUTPUT"
+
+      - name: Run DoodleoopTests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Doodleoop.xcodeproj \
+            -scheme Doodleoop \
+            -destination "${{ steps.destination.outputs.destination }}" \
+            -only-testing:DoodleoopTests \
+            -resultBundlePath TestResults.xcresult
+
+      - name: Run CrashSmokeUITests
+        run: |
+          set -o pipefail
+          xcodebuild test \
+            -project Doodleoop.xcodeproj \
+            -scheme Doodleoop \
+            -destination "${{ steps.destination.outputs.destination }}" \
+            -only-testing:DoodleoopUITests/CrashSmokeUITests \
+            -resultBundlePath CrashSmokeResults.xcresult
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: |
+            TestResults.xcresult
+            CrashSmokeResults.xcresult

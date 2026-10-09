@@ -4,6 +4,8 @@ enum GamePhase: String, Codable, Equatable {
   case lobby
   case drawing
   case guessing
+  /// Between turns — host starts the next drawing or guessing phase.
+  case passing
   case reveal
   case roundOver
 }
@@ -148,6 +150,21 @@ struct Drawing: Codable, Equatable {
   static let empty = Drawing(strokes: [])
 
   var isEmpty: Bool { strokes.allSatisfy(\.points.isEmpty) || strokes.isEmpty }
+
+  /// Drops excess strokes/points so a peer can't force huge sync payloads.
+  func capped(
+    maxStrokes: Int = GamePartyLimits.maxStrokesPerDrawing,
+    maxPointsPerStroke: Int = GamePartyLimits.maxPointsPerStroke
+  ) -> Drawing {
+    let clipped = strokes.prefix(maxStrokes).map { stroke -> Stroke in
+      var next = stroke
+      if next.points.count > maxPointsPerStroke {
+        next.points = Array(next.points.prefix(maxPointsPerStroke))
+      }
+      return next
+    }
+    return Drawing(strokes: Array(clipped))
+  }
 }
 
 enum ChainStep: Codable, Equatable, Identifiable {
@@ -182,9 +199,48 @@ enum GameTimerDefaults {
 }
 
 enum GameRoundDefaults {
+  /// A pad needs a second drawing after the first guess, so at least 3 seats.
+  static let minPlayers = 3
   static let maxRounds = 8
   static let minRounds = 2
   static let absoluteMaxRounds = 16
+
+  /// Draw turns in a full lap — starter never redraws their own pad.
+  static func maxDraws(forPlayerCount count: Int) -> Int {
+    guard count > 0 else { return minRounds }
+    return min(absoluteMaxRounds, (count + 1) / 2)
+  }
+}
+
+/// Local-party bounds so a peer can't inflate lobby/sync payloads.
+enum GamePartyLimits {
+  static let maxPlayers = 12
+  static let maxNameLength = 16
+  static let maxGuessLength = 80
+  static let maxCategoryLength = 80
+  static let maxStrokesPerDrawing = 400
+  static let maxPointsPerStroke = 1_500
+  /// Spoken aloud / shown on the host lobby — not advertised over Bonjour.
+  static let joinCodeLength = 4
+
+  static func sanitizedName(_ name: String, fallback: String = "Player") -> String {
+    let trimmed = String(
+      name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxNameLength)
+    )
+    return trimmed.isEmpty ? fallback : trimmed
+  }
+
+  static func sanitizedGuess(_ text: String) -> String {
+    String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxGuessLength))
+  }
+
+  static func sanitizedCategory(_ text: String) -> String {
+    String(text.trimmingCharacters(in: .whitespacesAndNewlines).prefix(maxCategoryLength))
+  }
+
+  static func makeJoinCode() -> String {
+    (0..<joinCodeLength).map { _ in String(Int.random(in: 0...9)) }.joined()
+  }
 }
 
 struct GameState: Codable, Equatable {
@@ -197,6 +253,9 @@ struct GameState: Codable, Equatable {
   var networkHostDeviceId: String = ""
   /// Bumps on each host migration so stale hosts lose authority.
   var stateEpoch: Int = 0
+  /// 4-digit local join code. Shared verbally; required on `.hello`. Synced so a
+  /// migrated host can keep validating (never put in Bonjour TXT).
+  var joinCode: String = ""
   var category: String = ""
   /// Pads indexed by starting player id.
   var pads: [SketchPad] = []
@@ -213,8 +272,8 @@ struct GameState: Codable, Equatable {
   var drawTimeLimitSeconds: Int = GameTimerDefaults.drawSeconds
   /// Seconds allowed for each guessing turn.
   var guessTimeLimitSeconds: Int = GameTimerDefaults.guessSeconds
-  /// Cap on how many times each seat draws (host-settable). Actual draws are
-  /// `min(maxRounds, playerCount)` so a 3-player game always draws three times.
+  /// Cap on how many times each seat draws (host-settable). A full lap is
+  /// `(playerCount + 1) / 2` draws so the starter never redraws their own pad.
   var maxRounds: Int = GameRoundDefaults.maxRounds
   /// Host-authored deadline for the current drawing/guessing turn.
   var phaseEndsAt: Date?
@@ -229,6 +288,7 @@ struct GameState: Codable, Equatable {
     roomId: String = "",
     networkHostDeviceId: String = "",
     stateEpoch: Int = 0,
+    joinCode: String = "",
     category: String = "",
     pads: [SketchPad] = [],
     turnIndex: Int = 0,
@@ -247,6 +307,7 @@ struct GameState: Codable, Equatable {
     self.roomId = roomId
     self.networkHostDeviceId = networkHostDeviceId
     self.stateEpoch = stateEpoch
+    self.joinCode = joinCode
     self.category = category
     self.pads = pads
     self.turnIndex = turnIndex
@@ -268,6 +329,7 @@ struct GameState: Codable, Equatable {
     roomId = try container.decodeIfPresent(String.self, forKey: .roomId) ?? ""
     networkHostDeviceId = try container.decodeIfPresent(String.self, forKey: .networkHostDeviceId) ?? ""
     stateEpoch = try container.decodeIfPresent(Int.self, forKey: .stateEpoch) ?? 0
+    joinCode = try container.decodeIfPresent(String.self, forKey: .joinCode) ?? ""
     category = try container.decode(String.self, forKey: .category)
     pads = try container.decode([SketchPad].self, forKey: .pads)
     turnIndex = try container.decode(Int.self, forKey: .turnIndex)
@@ -305,8 +367,13 @@ struct GameState: Codable, Equatable {
 
   /// Pad currently sitting in front of `playerId` for this turn.
   func pad(inFrontOf playerId: String) -> SketchPad? {
-    guard let holderIndex = playerIndex(playerId), !pads.isEmpty else { return nil }
-    let startIndex = (holderIndex - turnIndex + players.count) % players.count
+    guard let holderIndex = playerIndex(playerId), !players.isEmpty, !pads.isEmpty else {
+      return nil
+    }
+    let count = players.count
+    // Swift `%` keeps the sign of the dividend — normalize so turnIndex >= count
+    // (third+ draw) still maps into `0..<count`.
+    let startIndex = ((holderIndex - turnIndex) % count + count) % count
     return pads.first { $0.id == players[startIndex].id }
   }
 
@@ -317,16 +384,16 @@ struct GameState: Codable, Equatable {
   }
 
   /// How many times each seat will draw this round.
-  /// Full game: once per pad (`players.count`). `maxRounds` caps that on big tables.
   var effectiveDrawCount: Int {
-    guard !players.isEmpty else { return maxRounds }
-    return min(maxRounds, players.count)
+    (effectiveTurnCount + 1) / 2
   }
 
-  /// Total draw+guess turns before reveal: D G D G … D
-  /// (= `2 * effectiveDrawCount - 1`) so every seat draws on every pad up to the cap.
+  /// Total draw+guess turns before reveal. One lap is `playerCount` turns
+  /// (D G D …, ending just before the starter acts on their pad again).
+  /// `maxRounds` shortens that on large tables without adding extra drawings.
   var effectiveTurnCount: Int {
-    max(1, 2 * effectiveDrawCount - 1)
+    guard !players.isEmpty else { return 1 }
+    return min(players.count, 2 * maxRounds)
   }
 
   var isRoundComplete: Bool {
@@ -349,6 +416,11 @@ struct GameState: Codable, Equatable {
   /// Contribution steps visible so far on the current reveal pad.
   var visibleRevealContributions: [ChainStep] {
     Array(currentRevealContributions.prefix(max(0, revealStepIndex)))
+  }
+
+  /// True before any contribution on the current pad has been revealed (pad intro).
+  var isRevealPadIntro: Bool {
+    phase == .reveal && revealStepIndex == 0
   }
 
   /// True when the current pad's last contribution is showing and this is the last pad.

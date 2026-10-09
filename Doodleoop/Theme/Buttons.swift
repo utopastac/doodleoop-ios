@@ -1,9 +1,9 @@
 import SwiftUI
 
 enum DoodleButtonKind {
-  /// Ink fill, paper-white label — primary actions (`[ CREATE GAME ]`).
+  /// Ink fill, paper-white label — primary actions (`[[ HOST ]]`).
   case primary
-  /// Beige fill, ink label — secondary actions (`[ JOIN GAME ]`).
+  /// Beige fill, ink label — secondary actions (`[[ JOIN ]]`).
   case secondary
   /// White fill, ink label — tertiary / quiet actions (`[ THE RULES ]`).
   case tertiary
@@ -90,6 +90,7 @@ extension View {
 struct DoodlePrimarySaveButton: View {
   let title: String
   var isEnabled: Bool
+  var accessibilityIdentifier: String? = nil
   let action: () -> Void
 
   var body: some View {
@@ -99,6 +100,7 @@ struct DoodlePrimarySaveButton: View {
     }
     .buttonStyle(.plain)
     .disabled(!isEnabled)
+    .accessibilityIdentifier(accessibilityIdentifier ?? title.lowercased())
   }
 }
 

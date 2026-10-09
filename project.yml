@@ -37,12 +37,14 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        ITSAppUsesNonExemptEncryption: false
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: co.utopastac.doodleoop
       PRODUCT_NAME: Doodleoop
       TARGETED_DEVICE_FAMILY: "1,2"
-      MARKETING_VERSION: "0.1.0"
+      MARKETING_VERSION: "1.0.0"
       CURRENT_PROJECT_VERSION: "1"
+      DEVELOPMENT_TEAM: F472GKBUAR
   DoodleoopTests:
     type: bundle.unit-test
     platform: iOS
@@ -53,3 +55,28 @@ targets:
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: co.utopastac.doodleoop.tests
       GENERATE_INFOPLIST_FILE: YES
+      DEVELOPMENT_TEAM: F472GKBUAR
+  DoodleoopUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - DoodleoopUITests
+    dependencies:
+      - target: Doodleoop
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: co.utopastac.doodleoop.uitests
+      GENERATE_INFOPLIST_FILE: YES
+      TEST_TARGET_NAME: Doodleoop
+      DEVELOPMENT_TEAM: F472GKBUAR
+schemes:
+  Doodleoop:
+    build:
+      targets:
+        Doodleoop: all
+        DoodleoopTests: [test]
+        DoodleoopUITests: [test]
+    test:
+      targets:
+        - DoodleoopTests
+        - DoodleoopUITests
+      gatherCoverageData: false

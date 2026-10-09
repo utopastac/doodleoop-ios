@@ -17,6 +17,7 @@ struct LeaveGameButton: View {
     ) {
       showConfirm = true
     }
+    .accessibilityIdentifier("leave-game")
     .confirmationDialog(
       session.isHost ? "End this game?" : "Leave this game?",
       isPresented: $showConfirm,

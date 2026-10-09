@@ -27,5 +27,22 @@ open Doodleoop.xcodeproj
 ## Tests
 
 ```bash
-xcodebuild test -project Doodleoop.xcodeproj -scheme Doodleoop -destination 'platform=iOS Simulator,name=iPhone 17'
+xcodebuild test -project Doodleoop.xcodeproj -scheme Doodleoop \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+
+# Crash smoke (UI process survival)
+xcodebuild test -project Doodleoop.xcodeproj -scheme Doodleoop \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:DoodleoopUITests/CrashSmokeUITests
+
+# App Store screenshots
+fastlane screenshots
 ```
+
+UI crash smoke lives in `DoodleoopUITests/CrashSmokeUITests` (seeded `-UITesting` scenes).
+Launch args `-UITesting` / `-UITScene` seed `ViewPreview` fixtures (lobby, drawing,
+guessing, reveal, round-over). See [`docs/TESTING.md`](docs/TESTING.md).
+
+## Release
+
+Ship checklist, ASC metadata, and review notes: [`docs/RELEASE.md`](docs/RELEASE.md).

@@ -1,0 +1,11 @@
+No login and no server. This is a local party game.
+
+Demo with one iPhone (pass-and-play):
+1. Open Doodleoop, draw an avatar if prompted, set a name.
+2. Tap Host. Note the 4-digit join code on the lobby.
+3. Tap Add and create at least two more seats (3 seats minimum).
+4. Tap Start game, pick or enter a category, then draw / guess through a short round.
+5. Reveal advances on the host only (Next / Start / Finish).
+6. Allow Local Network if iOS asks — required for nearby multiplayer.
+
+Drawings and guesses are shared only with people in the same local lobby (spoken join code). There is no public feed or account system.

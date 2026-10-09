@@ -1,0 +1,50 @@
+{
+  "device_frame_version": "latest",
+  "default": {
+    "keyword": {
+      "font": "../fastlane/frameit/fonts/SF-Pro-Display-Semibold.otf",
+      "font_size": 118,
+      "tracking": -6,
+      "color": "#1F2329"
+    },
+    "title": {
+      "font": "../fastlane/frameit/fonts/SF-Pro-Text-Regular.otf",
+      "font_size": 74,
+      "tracking": -3.5,
+      "color": "#1F2329"
+    },
+    "background": "../fastlane/frameit/backgrounds/01-Home.png",
+    "padding": 50,
+    "title_stack_spacing": 12,
+    "title_below_image": false,
+    "show_complete_frame": false,
+    "stack_title": true,
+    "frame": "SILVER"
+  },
+  "data": [
+    {
+      "filter": "01-Home",
+      "background": "../fastlane/frameit/backgrounds/01-Home.png"
+    },
+    {
+      "filter": "02-Lobby",
+      "background": "../fastlane/frameit/backgrounds/02-Lobby.png"
+    },
+    {
+      "filter": "03-Drawing",
+      "background": "../fastlane/frameit/backgrounds/03-Drawing.png"
+    },
+    {
+      "filter": "04-Guessing",
+      "background": "../fastlane/frameit/backgrounds/04-Guessing.png"
+    },
+    {
+      "filter": "05-Reveal",
+      "background": "../fastlane/frameit/backgrounds/05-Reveal.png"
+    },
+    {
+      "filter": "06-RoundOver",
+      "background": "../fastlane/frameit/backgrounds/06-RoundOver.png"
+    }
+  ]
+}

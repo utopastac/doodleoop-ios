@@ -13,6 +13,24 @@
 
 Flow: **Views → GameSession intents → (host) GameEngine → syncState → joiners**.
 
+## Tests
+
+```bash
+xcodebuild test -project Doodleoop.xcodeproj -scheme Doodleoop \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+
+# Crash smoke (UI process survival)
+xcodebuild test -project Doodleoop.xcodeproj -scheme Doodleoop \
+  -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -only-testing:DoodleoopUITests/CrashSmokeUITests
+
+# App Store screenshots
+fastlane screenshots
+```
+
+UI work without live networking: use `ViewPreview` + `GameSession.loadPreview` (preview factory).
+Screenshot / crash UI tests use the same fixtures via `-UITesting` / `-UITScene` (`UITesting.swift`).
+
 ## Multi-seat
 
 Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is local only.
@@ -23,7 +41,7 @@ Pass-and-play = multiple `Player` seats share one `deviceId`. Handoff overlay is
 2. Everyone **draws** it (turn 0)
 3. Pads pass **left**; everyone **guesses** the drawing in front of them
 4. Pads pass left; everyone **draws** that guess
-5. Alternate draw / guess until each seat has **drawn on every pad** (capped by lobby draw cap) → **reveal** each pad’s journey one step at a time (synced on all phones), then the next pad
+5. Alternate draw / guess until the pad has gone **once around the table** — the starter never draws on their own pad again (3 players: draw → guess → draw). Lobby draw cap can shorten that on large tables → **reveal** each pad’s journey one step at a time (synced on all phones), then the next pad. Minimum **3** seats.
 
 ## IDs
 

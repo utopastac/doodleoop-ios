@@ -7,8 +7,8 @@ struct ReadOnlyDrawingView: View {
   let drawing: Drawing
   /// 0…1 — how much of the drawing has been replayed, stroke by stroke.
   var progress: Double = 1
-  /// Thins the ink in proportion to the canvas, so thumbnails don't read as marker pen.
-  var scalesStrokeWidth: Bool = false
+  /// Scale ink with the canvas so a smaller (or larger) drawing reads like a scaled image.
+  var scalesStrokeWidth: Bool = true
   /// When false the strokes sit straight on the surrounding surface (rows, tiles).
   var showsPaper: Bool = true
 
@@ -34,7 +34,7 @@ struct ReadOnlyDrawingView: View {
 private struct StrokeReplayCanvas: View, Animatable {
   var drawing: Drawing
   var progress: Double
-  var scalesStrokeWidth: Bool = false
+  var scalesStrokeWidth: Bool = true
 
   nonisolated var animatableData: Double {
     get { progress }

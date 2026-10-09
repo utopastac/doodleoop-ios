@@ -31,7 +31,15 @@ struct SessionAlert: Equatable, Identifiable {
     SessionAlert(
       kind: .joinFailed,
       title: "Couldn't join",
-      message: "Couldn't reach \(peerName). Stay nearby, accept Local Network access, and try again."
+      message: "Couldn't reach \(peerName). Check the join code, stay nearby, accept Local Network access, and try again."
+    )
+  }
+
+  static func badJoinCode(peerName: String) -> SessionAlert {
+    SessionAlert(
+      kind: .joinFailed,
+      title: "Couldn't join",
+      message: "Enter the 4-digit code shown on \(peerName)’s phone."
     )
   }
 

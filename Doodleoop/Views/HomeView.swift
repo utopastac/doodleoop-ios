@@ -8,8 +8,10 @@ struct HomeView: View {
   @State private var showRules = false
   @State private var showSettings = false
   @State private var showHistory = false
+  #if DEBUG
   @State private var showViewPreviews = false
   @State private var pendingPreview: ViewPreview?
+  #endif
 
   private static let avatarZoomID = "homeAvatar"
 
@@ -43,6 +45,7 @@ struct HomeView: View {
       .sheet(isPresented: $showSettings) {
         AppSettingsView()
       }
+      #if DEBUG
       .sheet(isPresented: $showViewPreviews, onDismiss: {
         if let pendingPreview {
           session.loadPreview(pendingPreview)
@@ -55,6 +58,7 @@ struct HomeView: View {
           showViewPreviews = false
         }
       }
+      #endif
     }
   }
 
@@ -84,15 +88,17 @@ struct HomeView: View {
         Spacer(minLength: 0)
 
         // Brand title band — rails hug glyph ink, not the font box
-        let brand = DoodleLabel.bracketed("Doodloop")
+        let brand = DoodleLabel.bracketed("Doodleoop")
         Text(brand)
           .themeText(.body)
           .foregroundStyle(Theme.Text.primary)
           .frame(maxWidth: .infinity)
           .gridBand(crop: .glyphs(text: brand, style: .body))
+          #if DEBUG
           .onLongPressGesture {
             showViewPreviews = true
           }
+          #endif
 
         // Headline sits in the open field between title and hero bands
         Text("A drawing relay party game")
@@ -103,9 +109,11 @@ struct HomeView: View {
           .fixedSize(horizontal: false, vertical: true)
           .pageHorizontalPadding()
           .padding(.vertical, Theme.Spacing.s6)
+          #if DEBUG
           .onLongPressGesture {
             showViewPreviews = true
           }
+          #endif
 
         Spacer(minLength: Theme.Spacing.s2)
 
@@ -132,34 +140,30 @@ struct HomeView: View {
 
         Spacer(minLength: Theme.Spacing.s6)
 
-        // Create / Join — band height == button height
+        // Create / Join — short double-bracket labels fit a half-width band on one line.
         HStack(spacing: 0) {
-          Button(DoodleLabel.bracketed("Create game")) {
+          Button("[[ HOST ]]") {
             session.updateDisplayName(nameDraft)
             session.hostGame()
           }
           .doodleButton(.primary)
+          .accessibilityLabel("Host")
+          .accessibilityIdentifier("host-game")
 
           GridLine(axis: .vertical)
             .frame(maxHeight: .infinity)
 
-          Button(DoodleLabel.bracketed("Join game")) {
+          Button("[[ JOIN ]]") {
             session.updateDisplayName(nameDraft)
             session.startBrowsing()
           }
           .doodleButton(.secondary)
+          .accessibilityLabel("Join")
+          .accessibilityIdentifier("join-game")
         }
         .frame(height: buttonHeight)
         .pageHorizontalPadding()
         .gridBand()
-
-        Text("Nearby phones on the same Wi‑Fi, with Local Network allowed.")
-          .themeText(.caption)
-          .foregroundStyle(Theme.Text.tertiary)
-          .multilineTextAlignment(.center)
-          .frame(maxWidth: .infinity)
-          .pageHorizontalPadding()
-          .padding(.top, Theme.Spacing.s3)
 
         Spacer(minLength: Theme.Spacing.s5)
 
@@ -170,6 +174,7 @@ struct HomeView: View {
           }
           .doodleButton(.tertiary)
           .frame(width: 153)
+          .accessibilityIdentifier("the-rules")
 
           DoodleIconButton(
             phosphor: .clockCounterClockwise,
@@ -177,6 +182,7 @@ struct HomeView: View {
           ) {
             showHistory = true
           }
+          .accessibilityIdentifier("history")
 
           DoodleIconButton(
             symbol: "slider.horizontal.3",
@@ -184,6 +190,7 @@ struct HomeView: View {
           ) {
             showSettings = true
           }
+          .accessibilityIdentifier("settings")
         }
         .frame(maxWidth: .infinity)
         .frame(height: rulesHeight)

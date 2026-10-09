@@ -1,0 +1,5 @@
+app_identifier("co.utopastac.doodleoop")
+team_id("F472GKBUAR")
+
+# Optional Apple ID for interactive sessions (prefer ASC API key — see Fastfile).
+# apple_id(ENV["FASTLANE_USER"]) if ENV["FASTLANE_USER"]

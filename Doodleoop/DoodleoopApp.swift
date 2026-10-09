@@ -7,6 +7,9 @@ struct DoodleoopApp: App {
   @AppStorage(PaperStyle.storageKey) private var paperStyleRaw = PaperStyle.plain.rawValue
 
   init() {
+    if UITesting.isEnabled {
+      UITesting.preparePreferences()
+    }
     let history = GameHistoryStore()
     _historyStore = State(wrappedValue: history)
     _session = State(wrappedValue: GameSession(historyStore: history))
@@ -17,6 +20,10 @@ struct DoodleoopApp: App {
       ContentView()
         .environment(session)
         .environment(historyStore)
+        .onAppear {
+          guard UITesting.isEnabled, let preview = UITesting.viewPreview else { return }
+          session.loadPreview(preview)
+        }
     }
     .environment(\.paperStyle, PaperStyle(rawValue: paperStyleRaw) ?? .plain)
   }

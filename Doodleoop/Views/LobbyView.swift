@@ -4,6 +4,8 @@ struct LobbyView: View {
   @Environment(GameSession.self) private var session
   @State private var extraName = ""
   @State private var showCategorySheet = false
+  @State private var pendingJoinPeer: DiscoveredPeer?
+  @State private var joinCodeDraft = ""
 
   private var state: GameState { session.state ?? GameState() }
 
@@ -12,7 +14,7 @@ struct LobbyView: View {
   }
 
   private var canStart: Bool {
-    session.isHost && state.players.count >= 2 && state.phase == .lobby
+    session.isHost && state.players.count >= GameRoundDefaults.minPlayers && state.phase == .lobby
   }
 
   /// Joiner is still hunting for a host — dedicated Find a game screen (Figma).
@@ -31,10 +33,10 @@ struct LobbyView: View {
     .paperBackground()
     .pageMargins()
     .onChange(of: state.players.count) { _, count in
-      clampDrawsToPlayerCount(count)
+      syncDrawsToPlayerCount(count)
     }
     .onAppear {
-      clampDrawsToPlayerCount(state.players.count)
+      syncDrawsToPlayerCount(state.players.count)
     }
     .sheet(isPresented: $showCategorySheet) {
       @Bindable var session = session
@@ -49,16 +51,38 @@ struct LobbyView: View {
       .presentationDetents([.medium, .large])
       .presentationDragIndicator(.visible)
     }
+    .sheet(item: $pendingJoinPeer) { peer in
+      JoinCodeSheet(
+        hostName: peer.displayName,
+        code: $joinCodeDraft,
+        onJoin: {
+          let code = joinCodeDraft
+          pendingJoinPeer = nil
+          joinCodeDraft = ""
+          session.join(peer, code: code)
+        },
+        onCancel: {
+          pendingJoinPeer = nil
+          joinCodeDraft = ""
+        }
+      )
+      .presentationDetents([.medium])
+      .presentationDragIndicator(.visible)
+    }
   }
 
-  private func clampDrawsToPlayerCount(_ count: Int) {
-    guard session.isHost, state.phase == .lobby, count >= 2 else { return }
-    let capped = min(count, GameRoundDefaults.absoluteMaxRounds)
-    guard state.maxRounds > capped else { return }
+  /// Keep Draws matched to a full lap so joining players lengthen the round.
+  private func syncDrawsToPlayerCount(_ count: Int) {
+    guard session.isHost, state.phase == .lobby, count >= GameRoundDefaults.minPlayers else { return }
+    let target = max(
+      GameRoundDefaults.minRounds,
+      GameRoundDefaults.maxDraws(forPlayerCount: count)
+    )
+    guard state.maxRounds != target else { return }
     session.updateGameSettings(
       drawSeconds: state.drawTimeLimitSeconds,
       guessSeconds: state.guessTimeLimitSeconds,
-      maxRounds: capped
+      maxRounds: target
     )
   }
 
@@ -99,20 +123,12 @@ struct LobbyView: View {
   private var findAGameList: some View {
     ScrollView {
       VStack(alignment: .leading, spacing: 0) {
-        Text(findAGameSectionTitle)
-          .themeText(.labelSmall)
-          .foregroundStyle(Theme.Text.primary)
-          .textCase(.uppercase)
-          .tracking(Theme.FontSize.footnote * 0.07)
-          .frame(maxWidth: .infinity, alignment: .leading)
-          .frame(height: Theme.Spacing.s8, alignment: .center)
-          .accessibilityAddTraits(.updatesFrequently)
+        findAGameSectionTitle
 
         switch session.joinStatus {
         case .connecting(let name):
-          Text("Connecting to \(name)…")
-            .themeText(.caption)
-            .foregroundStyle(Theme.Text.secondary)
+          ShimmerText(text: "Connecting to \(name)", style: .caption)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.vertical, Theme.Spacing.s1)
         case .failed(let message):
           VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
@@ -134,19 +150,39 @@ struct LobbyView: View {
     }
   }
 
-  private var findAGameSectionTitle: String {
-    switch session.joinStatus {
-    case .connecting:
-      return "Connecting…"
-    case .failed:
-      return "Couldn’t join"
-    case .browsing, .idle:
-      let count = session.discoveredPeers.count
-      if count == 0 {
-        return "Looking for games..."
+  private var findAGameSectionTitle: some View {
+    Group {
+      switch session.joinStatus {
+      case .connecting:
+        findAGamePlainTitle("Connecting…")
+      case .failed:
+        findAGamePlainTitle("Couldn’t join")
+      case .browsing, .idle:
+        let count = session.discoveredPeers.count
+        if count == 0 {
+          ShimmerText(
+            text: "Looking for games…",
+            style: .labelSmall,
+            base: Theme.Text.primary
+          )
+          .textCase(.uppercase)
+          .tracking(Theme.FontSize.footnote * 0.07)
+        } else {
+          findAGamePlainTitle(count == 1 ? "1 Game" : "\(count) Games")
+        }
       }
-      return count == 1 ? "1 Game" : "\(count) Games"
     }
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .frame(height: Theme.Spacing.s8, alignment: .center)
+    .accessibilityAddTraits(.updatesFrequently)
+  }
+
+  private func findAGamePlainTitle(_ text: String) -> some View {
+    Text(text)
+      .themeText(.labelSmall)
+      .foregroundStyle(Theme.Text.primary)
+      .textCase(.uppercase)
+      .tracking(Theme.FontSize.footnote * 0.07)
   }
 
   private func discoveredGameRow(_ peer: DiscoveredPeer) -> some View {
@@ -165,7 +201,8 @@ struct LobbyView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
 
       Button(DoodleLabel.bracketed("Join")) {
-        session.join(peer)
+        joinCodeDraft = ""
+        pendingJoinPeer = peer
       }
       .doodleButton(.primary)
       .fixedSize(horizontal: true, vertical: false)
@@ -201,6 +238,7 @@ struct LobbyView: View {
         }
         .doodleButton(.primary)
         .disabled(!canStart)
+        .accessibilityIdentifier("start-game")
         .padding(.bottom, Theme.Spacing.s3)
       }
     }
@@ -210,12 +248,24 @@ struct LobbyView: View {
   // MARK: - Header
 
   private var titleBlock: some View {
-    Text("\(hostName)’s game")
-      .themeText(.heading)
-      .foregroundStyle(Theme.Text.primary)
-      // Figma title cell: 80pt tall, vertically centered.
-      .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s11, maxHeight: Theme.Spacing.s11, alignment: .leading)
-      .accessibilityAddTraits(.isHeader)
+    VStack(alignment: .leading, spacing: Theme.Spacing.s1) {
+      Text("\(hostName)’s game")
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
+        .accessibilityAddTraits(.isHeader)
+
+      if session.isHost, !session.joinCode.isEmpty {
+        Text("Join code \(session.joinCode)")
+          .themeText(.caption)
+          .foregroundStyle(Theme.Text.secondary)
+          .textCase(.uppercase)
+          .tracking(Theme.FontSize.caption1 * 0.05)
+          .accessibilityLabel("Join code \(session.joinCode.map { String($0) }.joined(separator: " "))")
+      }
+    }
+    // Figma title cell is 80pt; host join code needs a little extra room.
+    .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s11, alignment: .leading)
+    .padding(.bottom, session.isHost && !session.joinCode.isEmpty ? Theme.Spacing.s2 : 0)
   }
 
   // MARK: - Settings
@@ -271,14 +321,14 @@ struct LobbyView: View {
   /// Shows how many times each seat will draw this game.
   private var drawsSettingValue: String {
     let seats = state.players.count
-    guard seats >= 2 else { return "\(state.maxRounds)" }
-    return "\(min(seats, state.maxRounds))"
+    guard seats >= GameRoundDefaults.minPlayers else { return "\(state.maxRounds)" }
+    return "\(state.effectiveDrawCount)"
   }
 
   private var drawsMenuUpperBound: Int {
     let seats = state.players.count
-    if seats >= 2 {
-      return min(seats, GameRoundDefaults.absoluteMaxRounds)
+    if seats >= GameRoundDefaults.minPlayers {
+      return GameRoundDefaults.maxDraws(forPlayerCount: seats)
     }
     return GameRoundDefaults.absoluteMaxRounds
   }
@@ -420,7 +470,8 @@ struct LobbyView: View {
   // MARK: - Add seat
 
   private var addPlayerRow: some View {
-    HStack(spacing: Theme.Spacing.s2) {
+    let atCap = state.players.count >= GamePartyLimits.maxPlayers
+    return HStack(spacing: Theme.Spacing.s2) {
       DoodleTextField(placeholder: "Player name", text: $extraName, onSubmit: addSeat)
 
       Button(DoodleLabel.bracketed("Add")) {
@@ -428,13 +479,71 @@ struct LobbyView: View {
       }
       .doodleButton(.secondary)
       .fixedSize(horizontal: true, vertical: false)
-      .disabled(session.state == nil || state.phase != .lobby)
+      .disabled(session.state == nil || state.phase != .lobby || atCap)
+      .accessibilityIdentifier("add-player")
     }
   }
 
   private func addSeat() {
     session.addLocalSeat(name: extraName)
     extraName = ""
+  }
+}
+
+// MARK: - Join code entry
+
+private struct JoinCodeSheet: View {
+  let hostName: String
+  @Binding var code: String
+  var onJoin: () -> Void
+  var onCancel: () -> Void
+
+  private var canJoin: Bool {
+    code.filter(\.isNumber).count == GamePartyLimits.joinCodeLength
+  }
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 0) {
+      HStack {
+        Text("Join code")
+          .themeText(.heading)
+          .foregroundStyle(Theme.Text.primary)
+        Spacer(minLength: 0)
+        Button(DoodleLabel.bracketed("Cancel")) {
+          onCancel()
+        }
+        .doodleButton(.tertiary)
+      }
+      .sheetHeaderInset()
+      .gridBand()
+
+      Text("Ask \(hostName) for the 4-digit code on their lobby.")
+        .themeText(.body)
+        .foregroundStyle(Theme.Text.secondary)
+        .padding(.top, Theme.Spacing.s4)
+
+      TextField("0000", text: $code)
+        .themeText(.display)
+        .keyboardType(.numberPad)
+        .textContentType(.oneTimeCode)
+        .multilineTextAlignment(.center)
+        .padding(.vertical, Theme.Spacing.s6)
+        .onChange(of: code) { _, next in
+          let digits = String(next.filter(\.isNumber).prefix(GamePartyLimits.joinCodeLength))
+          if digits != next { code = digits }
+        }
+
+      Spacer(minLength: 0)
+
+      Button(DoodleLabel.bracketed("Join")) {
+        onJoin()
+      }
+      .doodleButton(.primary)
+      .disabled(!canJoin)
+      .padding(.bottom, Theme.Spacing.s3)
+    }
+    .pageHorizontalPadding()
+    .paperBackground()
   }
 }
 

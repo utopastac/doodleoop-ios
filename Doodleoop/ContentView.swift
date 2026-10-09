@@ -3,6 +3,8 @@ import SwiftUI
 struct ContentView: View {
   @Environment(GameSession.self) private var session
   @Environment(\.scenePhase) private var scenePhase
+  /// Flips to `screenshot-ready` for Fastlane Snapshot once the UIT scene is settled.
+  @State private var screenshotSceneReady = false
 
   var body: some View {
     ZStack {
@@ -43,6 +45,20 @@ struct ContentView: View {
     .animation(Theme.Motion.handoff, value: session.isMigratingHost)
     .environment(\.font, Theme.TextStyle.label.font)
     .drawingZoomLayer()
+    .task {
+      await markScreenshotReadyIfNeeded()
+    }
+    // Probe only — do not label the whole tree (that steals child identifiers).
+    .background(alignment: .topLeading) {
+      if UITesting.isEnabled {
+        Color.clear
+          .frame(width: 1, height: 1)
+          .accessibilityIdentifier(
+            screenshotSceneReady ? "screenshot-ready" : "screenshot-pending"
+          )
+          .allowsHitTesting(false)
+      }
+    }
     .onChange(of: scenePhase) { _, phase in
       switch phase {
       case .active: session.handleLifecycle(.active)
@@ -71,6 +87,17 @@ struct ContentView: View {
     } message: {
       Text("Nearby games pause when the app backgrounds. Leave Doodleoop open on every phone — if the host bounces away, another phone can take over after a short wait.")
     }
+  }
+
+  @MainActor
+  private func markScreenshotReadyIfNeeded() async {
+    guard UITesting.isEnabled else {
+      screenshotSceneReady = true
+      return
+    }
+    // Let preview seed + first SwiftUI layout settle before capture / smoke taps.
+    try? await Task.sleep(for: .milliseconds(500))
+    screenshotSceneReady = true
   }
 
   private var alertPresented: Binding<Bool> {
@@ -108,7 +135,9 @@ struct ContentView: View {
   /// Lobby, reveal and round-over own a 40pt leave band; drawing / guessing use overlay chrome.
   private var usesInlineLeave: Bool {
     guard !isLobbyPhase else { return true }
-    return session.phase == .reveal || session.phase == .roundOver
+    return session.phase == .reveal
+      || session.phase == .roundOver
+      || session.phase == .passing
   }
 
   @ViewBuilder
@@ -129,6 +158,9 @@ struct ContentView: View {
         case .guessing:
           GuessingView()
             .transition(Self.passLeft)
+        case .passing:
+          PassingView()
+            .transition(Self.crossfade)
         case .reveal:
           RevealView()
             .transition(Self.crossfade)
@@ -167,7 +199,7 @@ struct ContentView: View {
 
   @ViewBuilder
   private var bottomConnectionChrome: some View {
-    VStack(spacing: Theme.Spacing.s2) {
+    ZStack(alignment: .bottom) {
       if session.showsConnectionStrip {
         ConnectionPresenceStrip(presences: session.connectionPresences)
       }
@@ -176,9 +208,19 @@ struct ContentView: View {
         SessionStatusBanner(text: banner) {
           session.clearStatusBanner()
         }
+        .transition(.opacity)
+        .task(id: banner) {
+          try? await Task.sleep(nanoseconds: UInt64(Self.statusBannerToastSeconds * 1_000_000_000))
+          guard !Task.isCancelled else { return }
+          if session.statusBanner == banner {
+            session.clearStatusBanner()
+          }
+        }
       }
     }
   }
+
+  private static let statusBannerToastSeconds: TimeInterval = 3
 
   /// Pads pass left: outgoing exits leading, incoming enters from trailing.
   private static let passLeft = AnyTransition.asymmetric(
@@ -191,7 +233,7 @@ struct ContentView: View {
   )
 }
 
-/// Compact in-game notice for departures and brief status.
+/// Compact toast for departures and brief status — overlays the presence strip, then fades away.
 struct SessionStatusBanner: View {
   let text: String
   var onDismiss: () -> Void

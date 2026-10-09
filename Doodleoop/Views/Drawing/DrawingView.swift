@@ -33,7 +33,7 @@ struct DrawingView: View {
 
     Group {
       if hasSubmitted {
-        waitingContent(endsAt: state?.phaseEndsAt)
+        WaitingForPlayersView(endsAt: state?.phaseEndsAt)
       } else {
         drawingContent(prompt: prompt, canSubmit: canSubmit, endsAt: state?.phaseEndsAt)
       }
@@ -96,28 +96,6 @@ struct DrawingView: View {
     }
   }
 
-  private func waitingContent(endsAt: Date?) -> some View {
-    VStack(spacing: 0) {
-      Spacer(minLength: Theme.Spacing.s3)
-
-      Text("Waiting for other players")
-        .themeText(.body)
-        .multilineTextAlignment(.center)
-        .foregroundStyle(Theme.Text.secondary)
-        .frame(maxWidth: .infinity)
-        .padding(.trailing, Theme.Sizing.leaveButtonReserve)
-        .pageHorizontalPadding()
-
-      Spacer(minLength: Theme.Spacing.s4)
-
-      PhaseCountdown(endsAt: endsAt, style: .timer)
-        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
-        .frame(height: Theme.Spacing.s10, alignment: .bottom)
-        .pageHorizontalPadding()
-        .padding(.bottom, Theme.Spacing.s3)
-    }
-  }
-
   private var clearButton: some View {
     DoodleIconButton(
       phosphor: .trash,
@@ -130,7 +108,7 @@ struct DrawingView: View {
   }
 
   private func saveButton(canSubmit: Bool) -> some View {
-    DoodlePrimarySaveButton(title: "Save", isEnabled: canSubmit) {
+    DoodlePrimarySaveButton(title: "Save", isEnabled: canSubmit, accessibilityIdentifier: "save-drawing") {
       commitDrawing()
     }
   }

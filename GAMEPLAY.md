@@ -2,14 +2,14 @@
 
 ## Pitch
 
-A pictorial Chinese whispers / Telestrations-style party game. One shared category starts every pad. Players draw, pass left, guess, pass left, draw again — until every person has contributed to every pad. Then reveal the mangled chains.
+A pictorial Chinese whispers / Telestrations-style party game. One shared category starts every pad. Players draw, pass left, guess, pass left, draw again — until the pad has gone once around the table (the person who started it never draws on it twice). Then reveal the mangled chains.
 
 ## Setup
 
 1. Create or join a local lobby (Multipeer)
 2. Optional: **Add seat** on any phone for pass-and-play
 3. Host can open **Game settings** to set drawing / guessing timers (defaults **60s** / **30s**)
-4. Host enters a **category** and starts when there are at least 2 players
+4. Host enters a **category** and starts when there are at least 3 players
 
 ## Round
 
@@ -20,7 +20,7 @@ A pictorial Chinese whispers / Telestrations-style party game. One shared catego
 
 After everyone submits — or the turn timer expires — each pad moves one seat to the left.
 
-Turns alternate draw → guess → draw → … until **every seat has drawn on every pad** (for 3 players: 3 draws + 2 guesses each). The lobby **draw cap** (default 8) only shortens that on large tables — e.g. 10 players with cap 8 each draw 8 times, not 10.
+Turns alternate draw → guess → draw → … for one lap around the table, so the starter never draws on their own pad again (3 players: draw → guess → draw). The lobby **draw cap** (default 8) only shortens that on large tables.
 
 Reveal walks each pad’s journey one step at a time (drawing → guess → …), synced on every phone; after a pad finishes, the next player’s pad starts. Then return to lobby for another category.
 

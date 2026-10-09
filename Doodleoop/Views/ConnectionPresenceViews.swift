@@ -99,10 +99,9 @@ struct ReconnectOverlay: View {
             .foregroundStyle(Theme.Text.secondary)
             .multilineTextAlignment(.center)
             .pageHorizontalPadding()
-        }
 
-        ProgressView()
-          .tint(Theme.Accent.default)
+          ShimmerText(text: "Still looking")
+        }
 
         Button(DoodleLabel.bracketed("Leave game"), action: onLeave)
           .doodleButton(.secondary)
@@ -150,10 +149,9 @@ struct HostMigrationOverlay: View {
             .foregroundStyle(Theme.Text.secondary)
             .multilineTextAlignment(.center)
             .pageHorizontalPadding()
-        }
 
-        ProgressView()
-          .tint(Theme.Accent.default)
+          ShimmerText(text: isBecomingHost ? "Almost ready" : "Still looking")
+        }
 
         Button(DoodleLabel.bracketed("Leave game"), action: onLeave)
           .doodleButton(.secondary)

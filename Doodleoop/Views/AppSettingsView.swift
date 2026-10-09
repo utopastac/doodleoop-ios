@@ -43,6 +43,19 @@ struct AppSettingsView: View {
           }
 
           GridLine(axis: .horizontal)
+
+          section("About") {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s3) {
+              linkRow(title: "Privacy Policy", url: AppLinks.privacy)
+              linkRow(title: "Support", url: AppLinks.support)
+              Text(versionLabel)
+                .themeText(.caption)
+                .foregroundStyle(Theme.Text.secondary)
+                .pageHorizontalPadding()
+            }
+          }
+
+          GridLine(axis: .horizontal)
         }
       }
       .scrollBounceBehavior(.basedOnSize)
@@ -50,6 +63,23 @@ struct AppSettingsView: View {
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .paperBackground()
     .pageMargins()
+  }
+
+  private var versionLabel: String {
+    let marketing = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"
+    let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—"
+    return "Version \(marketing) (\(build))"
+  }
+
+  private func linkRow(title: String, url: URL) -> some View {
+    Link(destination: url) {
+      Text(DoodleLabel.bracketed(title))
+        .themeText(.body)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, minHeight: Theme.Sizing.inputHeight, alignment: .leading)
+        .pageHorizontalPadding()
+    }
+    .accessibilityIdentifier(title.lowercased().replacingOccurrences(of: " ", with: "-"))
   }
 
   private func section<Content: View>(

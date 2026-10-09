@@ -7,7 +7,7 @@ import SwiftUI
 struct ZoomableDrawingView: View {
   let drawing: Drawing
   var progress: Double = 1
-  var scalesStrokeWidth: Bool = false
+  var scalesStrokeWidth: Bool = true
   var showsPaper: Bool = true
 
   private static let springBack = Transaction(animation: Theme.Motion.reveal)

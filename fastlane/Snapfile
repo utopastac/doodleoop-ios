@@ -1,0 +1,21 @@
+# App Store screenshot devices (Apple scales down from these).
+devices([
+  "iPhone 18 Pro Max",
+])
+
+languages([
+  "en-GB",
+])
+
+scheme("Doodleoop")
+
+output_directory("./screenshots")
+
+clear_previous_screenshots(true)
+
+override_status_bar(true)
+
+concurrent_simulators(true)
+
+# Keep derived data out of screenshots/ so framed PNGs stay easy to spot.
+derived_data_path("./build/snapshot_derived_data")

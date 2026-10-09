@@ -16,7 +16,20 @@ xcuserdata/
 .build/
 .swiftpm/
 
+# Fastlane / screenshot capture
 fastlane/report.xml
 fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
+fastlane/README.md
+screenshots/
+build/snapshot_derived_data/
+build/ui_smoke_derived_data/
+.env
+.env.local
+fastlane/.env
+fastlane/.env.default
+AuthKey_*.p8
+**/AuthKey*.json
+fastlane/api_key.json
+*.p8

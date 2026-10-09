@@ -1,0 +1,10 @@
+# Defaults for `upload_to_app_store` / deliver.
+# Lane options override these when needed.
+
+screenshots_path("./screenshots")
+metadata_path("./metadata")
+skip_binary_upload(true)
+skip_metadata(true)
+overwrite_screenshots(true)
+run_precheck_before_submit(false)
+force(true) # skip HTML confirmation prompt (needed for CI / non-interactive)

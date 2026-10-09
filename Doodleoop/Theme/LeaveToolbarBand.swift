@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 40pt band with an optional title and trailing leave control — lobby, reveal, round-over.
+/// 40pt band with an optional title and trailing leave control — lobby, passing, reveal, round-over.
 struct LeaveToolbarBand: View {
   var title: String?
 

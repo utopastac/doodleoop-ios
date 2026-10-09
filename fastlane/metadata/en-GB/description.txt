@@ -1,0 +1,13 @@
+Doodleoop is a local multiplayer pictorial Chinese whispers party game.
+
+One phone hosts. Friends join nearby with a short join code — or add extra seats on one device. Everyone draws the same category, pads pass left, you guess what’s in front of you, then draw that guess. Keep going until every pad has looped the table, then reveal how far the doodles wandered.
+
+No account. No cloud game server. Play stays on your devices and your local network.
+
+• Nearby multiplayer over Wi‑Fi or Personal Hotspot
+• Pass-and-play seats when you’re short a phone
+• Join codes so random café traffic can’t wander in
+• Stroke tools, paper styles, and a synced reveal
+• Offline History of finished rounds on each phone
+
+Play with the people on the sofa.

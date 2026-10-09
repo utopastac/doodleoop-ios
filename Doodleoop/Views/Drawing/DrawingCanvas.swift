@@ -293,6 +293,26 @@ private struct StrokeTouchCapture: UIViewRepresentable {
     var onSamples: (([Sample], CGSize) -> Void)?
     var onEnded: ((CGPoint, CGSize) -> Void)?
 
+    /// Held so we can re-enable pop after this view leaves the window.
+    private weak var lockedNavigationController: UINavigationController?
+
+    override func didMoveToWindow() {
+      super.didMoveToWindow()
+      if window == nil {
+        lockedNavigationController?.setInteractivePopEnabled(true)
+        lockedNavigationController = nil
+      } else {
+        lockNavigationPopIfNeeded()
+      }
+    }
+
+    override func layoutSubviews() {
+      super.layoutSubviews()
+      if window != nil, lockedNavigationController == nil {
+        lockNavigationPopIfNeeded()
+      }
+    }
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
       emit(touches, event: event)
     }
@@ -319,6 +339,36 @@ private struct StrokeTouchCapture: UIViewRepresentable {
         Sample(location: $0.location(in: self), timestamp: $0.timestamp)
       }
       onSamples?(samples, bounds.size)
+    }
+
+    private func lockNavigationPopIfNeeded() {
+      guard let nav = enclosingNavigationController else { return }
+      // Avatar setup is a NavigationStack push. iOS 26's content-pop pan
+      // starts from anywhere and steals horizontal strokes; edge-pop does
+      // the same near the left of the circle. The X button is the way back.
+      nav.setInteractivePopEnabled(false)
+      lockedNavigationController = nav
+    }
+
+    private var enclosingNavigationController: UINavigationController? {
+      var responder: UIResponder? = self
+      while let current = responder {
+        if let nav = current as? UINavigationController { return nav }
+        if let vc = current as? UIViewController, let nav = vc.navigationController {
+          return nav
+        }
+        responder = current.next
+      }
+      return nil
+    }
+  }
+}
+
+private extension UINavigationController {
+  func setInteractivePopEnabled(_ enabled: Bool) {
+    interactivePopGestureRecognizer?.isEnabled = enabled
+    if #available(iOS 26.0, *) {
+      interactiveContentPopGestureRecognizer?.isEnabled = enabled
     }
   }
 }

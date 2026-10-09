@@ -10,10 +10,20 @@ final class GameSessionTests: XCTestCase {
     return GameHistoryStore(directory: dir)
   }
 
+  private let testJoinCode = "4242"
+
   private func lobbyState(hostId: String = "host", joinerId: String = "joiner") -> GameState {
     var state = GameState()
+    state.joinCode = testJoinCode
     state = GameEngine.addPlayer(id: hostId, name: "Host", deviceId: hostId, to: state)
     state = GameEngine.addPlayer(id: joinerId, name: "Joiner", deviceId: joinerId, to: state)
+    return state
+  }
+
+  /// Three seats so `startRound` is legal.
+  private func playableLobbyState(hostId: String = "host", joinerId: String = "joiner") -> GameState {
+    var state = lobbyState(hostId: hostId, joinerId: joinerId)
+    state = GameEngine.addPlayer(id: "p2", name: "P2", deviceId: "p2", to: state)
     return state
   }
 
@@ -41,7 +51,7 @@ final class GameSessionTests: XCTestCase {
     session.testing_configure(role: .joiner, state: nil)
     session.testing_handle(.syncState(lobby), fromPeerKey: "Host")
 
-    var drawing = lobby
+    var drawing = playableLobbyState()
     drawing = GameEngine.startRound(category: "Food", in: drawing)
     let stripped = drawing.strippingAvatars()
     session.testing_handle(.syncState(stripped), fromPeerKey: "Host")
@@ -94,6 +104,7 @@ final class GameSessionTests: XCTestCase {
     state.stateEpoch = 3
     state = GameEngine.addPlayer(id: "old-host", name: "Host", deviceId: "old-host", to: state)
     state = GameEngine.addPlayer(id: me, name: "Me", deviceId: me, to: state)
+    state = GameEngine.addPlayer(id: "\(me)-seat2", name: "Me2", deviceId: me, to: state)
     state = GameEngine.startRound(category: "Food", in: state)
 
     let recorder = RecordingMessageTransport()
@@ -171,7 +182,7 @@ final class GameSessionTests: XCTestCase {
     let store = try makeHistoryStore()
     let session = GameSession(historyStore: store)
     let recorder = RecordingMessageTransport()
-    var state = lobbyState()
+    var state = playableLobbyState()
     state = GameEngine.startRound(category: "Food", in: state)
     state = GameEngine.handleDisconnect(deviceId: "joiner", from: state)
     XCTAssertTrue(state.absentDeviceIds.contains("joiner"))
@@ -182,7 +193,7 @@ final class GameSessionTests: XCTestCase {
       messageTransport: recorder
     )
     session.testing_handle(
-      .hello(playerId: "joiner", name: "Joiner", avatar: .empty),
+      .hello(playerId: "joiner", name: "Joiner", avatar: .empty, joinCode: testJoinCode),
       fromPeerKey: "JoinerPhone"
     )
     XCTAssertFalse(session.state?.absentDeviceIds.contains("joiner") ?? true)
@@ -193,7 +204,7 @@ final class GameSessionTests: XCTestCase {
     let store = try makeHistoryStore()
     let session = GameSession(historyStore: store)
     let recorder = RecordingMessageTransport()
-    var state = lobbyState()
+    var state = playableLobbyState()
     state = GameEngine.startRound(category: "Food", in: state)
     session.testing_configure(
       role: .host,
@@ -201,10 +212,67 @@ final class GameSessionTests: XCTestCase {
       messageTransport: recorder
     )
     session.testing_handle(
-      .hello(playerId: "stranger", name: "Stranger", avatar: .empty),
+      .hello(playerId: "stranger", name: "Stranger", avatar: .empty, joinCode: testJoinCode),
       fromPeerKey: "StrangerPhone"
     )
+    XCTAssertEqual(session.state?.players.map(\.id), ["host", "joiner", "p2"])
+    XCTAssertTrue(recorder.sent.isEmpty)
+  }
+
+  func testHostRejectsWrongJoinCode() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    session.testing_configure(
+      role: .host,
+      state: lobbyState(),
+      messageTransport: recorder
+    )
+    session.testing_handle(
+      .hello(playerId: "newbie", name: "Newbie", avatar: .empty, joinCode: "0000"),
+      fromPeerKey: "NewbiePhone"
+    )
     XCTAssertEqual(session.state?.players.map(\.id), ["host", "joiner"])
+    XCTAssertTrue(recorder.sent.isEmpty)
+  }
+
+  func testHostRejectsLiveDeviceSpoof() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    session.testing_configure(
+      role: .host,
+      state: lobbyState(),
+      peerDeviceIds: ["JoinerPhone": "joiner"],
+      messageTransport: recorder
+    )
+    session.testing_handle(
+      .hello(playerId: "joiner", name: "Impostor", avatar: .empty, joinCode: testJoinCode),
+      fromPeerKey: "AttackerPhone"
+    )
+    XCTAssertEqual(session.state?.player(id: "joiner")?.name, "Joiner")
+    XCTAssertTrue(recorder.sent.isEmpty)
+  }
+
+  func testHostIgnoresAdvanceRevealFromPeer() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store)
+    let recorder = RecordingMessageTransport()
+    var state = playableLobbyState()
+    state = GameEngine.startRound(category: "Food", in: state)
+    // Jump to reveal.
+    state.phase = .reveal
+    state.phaseEndsAt = nil
+    state.revealPadIndex = 0
+    state.revealStepIndex = 0
+    session.testing_configure(
+      role: .host,
+      state: state,
+      peerDeviceIds: ["JoinerPhone": "joiner"],
+      messageTransport: recorder
+    )
+    session.testing_handle(.advanceReveal, fromPeerKey: "JoinerPhone")
+    XCTAssertEqual(session.state?.revealStepIndex, 0)
     XCTAssertTrue(recorder.sent.isEmpty)
   }
 
@@ -267,7 +335,7 @@ final class GameSessionTests: XCTestCase {
     let store = try makeHistoryStore()
     let session = GameSession(historyStore: store)
     let recorder = RecordingMessageTransport()
-    var state = lobbyState()
+    var state = playableLobbyState()
     state = GameEngine.startRound(category: "Food", in: state)
     session.testing_configure(
       role: .host,
@@ -302,7 +370,7 @@ final class GameSessionTests: XCTestCase {
     state.drawTimeLimitSeconds = 45
     let messages: [NetworkMessage] = [
       .syncState(state),
-      .hello(playerId: "p", name: "Pat", avatar: .empty),
+      .hello(playerId: "p", name: "Pat", avatar: .empty, joinCode: "1234"),
       .sessionEnded,
       .leave,
       .advanceReveal,

@@ -1,0 +1,95 @@
+default_platform(:ios)
+
+# Load gitignored secrets from repo root and/or fastlane/.
+["../.env", ".env"].each do |relative|
+  path = File.expand_path(relative, __dir__)
+  next unless File.exist?(path)
+  File.readlines(path, chomp: true).each do |line|
+    next if line.empty? || line.start_with?("#")
+    key, value = line.split("=", 2)
+    next unless key && value
+    ENV[key] = value unless ENV.key?(key) && !ENV[key].to_s.empty?
+  end
+end
+
+platform :ios do
+  desc "Capture App Store screenshots via DoodleoopUITests"
+  lane :screenshots do
+    capture_screenshots(
+      project: "Doodleoop.xcodeproj",
+      scheme: "Doodleoop",
+      devices: [
+        "iPhone 18 Pro Max",
+      ],
+      languages: ["en-GB"],
+      output_directory: "./screenshots",
+      clear_previous_screenshots: true,
+      override_status_bar: true,
+      concurrent_simulators: true,
+      skip_open_summary: false,
+      test_without_building: false,
+      only_testing: ["DoodleoopUITests/ScreenshotTests"],
+      derived_data_path: "./build/snapshot_derived_data",
+    )
+    frame unless env_flag("SKIP_FRAME")
+  end
+
+  desc "Apply standard Fastlane Frameit device frames + marketing titles"
+  lane :frame do
+    require "fileutils"
+    # Optional `tracking` on keyword/title (ImageMagick kerning) — Frameit has no built-in.
+    frameit_style = File.expand_path("frameit_text_style.rb", __dir__)
+    require_relative "frameit_text_style" if File.exist?(frameit_style)
+
+    shots = File.expand_path("../screenshots", __dir__)
+    frameit_dir = File.expand_path("frameit", __dir__)
+
+    # Frameit reads Framefile.json + *.strings next to the captures.
+    FileUtils.mkdir_p(shots)
+    FileUtils.cp(
+      File.join(frameit_dir, "Framefile.json"),
+      File.join(shots, "Framefile.json"),
+    )
+    Dir.glob(File.join(frameit_dir, "en-*")).each do |locale_src|
+      locale = File.basename(locale_src)
+      locale_dst = File.join(shots, locale)
+      FileUtils.mkdir_p(locale_dst)
+      Dir.glob(File.join(locale_src, "*.strings")).each do |strings|
+        FileUtils.cp(strings, locale_dst)
+      end
+    end
+
+    frame_screenshots(
+      path: shots,
+      use_platform: "IOS",
+    )
+  end
+
+  desc "Copy iPhone captures into the doodloop-website marketing gallery"
+  lane :sync_marketing do
+    sh("bash", "#{File.expand_path('../scripts/sync_marketing_screenshots.sh', __dir__)}")
+  end
+
+  desc "Capture screenshots and sync marketing site"
+  lane :release_screenshots do
+    screenshots
+    sync_marketing
+  end
+
+  desc "Run crash-smoke UI tests (process survival)"
+  lane :ui_smoke do
+    scan(
+      project: "Doodleoop.xcodeproj",
+      scheme: "Doodleoop",
+      devices: ["iPhone 17"],
+      only_testing: ["DoodleoopUITests/CrashSmokeUITests"],
+      derived_data_path: "./build/ui_smoke_derived_data",
+      result_bundle: true,
+    )
+  end
+end
+
+def env_flag(name)
+  value = ENV[name].to_s.strip.downcase
+  %w[1 true yes y].include?(value)
+end

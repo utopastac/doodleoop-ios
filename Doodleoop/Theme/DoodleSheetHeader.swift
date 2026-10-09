@@ -18,6 +18,7 @@ struct DoodleSheetHeader: View {
           .doodlePrimarySaveLabel(isEnabled: true)
       }
       .buttonStyle(.plain)
+      .accessibilityIdentifier("sheet-dismiss")
     }
     .pageHorizontalPadding()
     .frame(height: Theme.Sizing.inputHeight)

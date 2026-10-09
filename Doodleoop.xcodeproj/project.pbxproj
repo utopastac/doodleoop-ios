@@ -11,6 +11,7 @@
 		0B0D67B965D8598DF2C60FFF /* GuessingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */; };
 		0DC02630F7C34334D7DFA1F9 /* Paper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CA0FF03EB5FAD68B4D36C33 /* Paper.swift */; };
 		0FC6CD2C07129B8281998989 /* LobbyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E78A68452B445EE2B9A2E37 /* LobbyView.swift */; };
+		21352F7E95870A0E852511EC /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A35F44B0AC9E782F7B30CEDA /* ScreenshotTests.swift */; };
 		26A571DDABF4C5744DF21E06 /* SessionAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1529A05222CCB1BD0318F56 /* SessionAlert.swift */; };
 		2CE4C18582B887EBD27C8148 /* DoodleoopApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */; };
 		33176D892C0CCAD2E7E9BCF2 /* SpaceMono-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 07AA671984EE3F81C067FB37 /* SpaceMono-Bold.ttf */; };
@@ -21,7 +22,9 @@
 		392FA67292540D2F86D8A0FA /* DoodleTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = D73E386964A91B901D348681 /* DoodleTextField.swift */; };
 		4CEF14AA537E58A5255F4DA8 /* PartyTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 909F7A8701F5D665B40416C7 /* PartyTransport.swift */; };
 		4EE4A75D8768CF747E138F60 /* DrawingPhotoExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4598A414FAF3EB9B463EB526 /* DrawingPhotoExport.swift */; };
+		51B163E77EBFCADF3CF8E702 /* ShimmerText.swift in Sources */ = {isa = PBXBuildFile; fileRef = B21194CA98055FF6201315CC /* ShimmerText.swift */; };
 		5B049B89F050D2018FF4F026 /* GameEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */; };
+		5D223348E2413936A359E383 /* PassingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37E3ACEB8D2A0554EF2E3D90 /* PassingView.swift */; };
 		5D98C008DFCBE2BE439FBB6E /* StrokeRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EC3B7FFD203C8D5DDC288F3 /* StrokeRenderer.swift */; };
 		5DEC14BB7A5F6146F4F2DF04 /* Buttons.swift in Sources */ = {isa = PBXBuildFile; fileRef = C265374CBB050E4CF31E3798 /* Buttons.swift */; };
 		607FB4669AA4B9D3C2BEE49C /* DeviceIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */; };
@@ -37,23 +40,29 @@
 		7C9A6A496429E4F13EE63F91 /* GameMessageTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5182D55609EA4E55902053FE /* GameMessageTransport.swift */; };
 		7FF714B66A84E6E07C2F8518 /* GameEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BFA3154499E75A13FA882F6 /* GameEngineTests.swift */; };
 		8718E0FDBEC7EC93635F044C /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C197988DB66529732A5329B /* ContentView.swift */; };
+		8754C371A5C5D669933EB009 /* AppLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B775E4D4173C254BF33BA75B /* AppLinks.swift */; };
 		8A25E4D660BC1DDCD0C8F329 /* GameHistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48DF8219F72A2E93F05999E0 /* GameHistoryView.swift */; };
 		98AAFD43EA68E82170B7AAEA /* NetworkPartyTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7786F8849BC7B3AC2C843D86 /* NetworkPartyTransport.swift */; };
 		9F109CB5DE756C1EE11BA0D2 /* PhosphorIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2378A75C5C0F0A26B854DF8 /* PhosphorIcon.swift */; };
 		AAE5723111E005E1E15578D8 /* DrawingCanvas.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A60FD2504CC650788F73C07 /* DrawingCanvas.swift */; };
 		B6446F3B4BB9E8FBF99BE7B4 /* SpaceMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 0F67899542B16CE6EA5FD931 /* SpaceMono-Regular.ttf */; };
+		BE2237025B1FCD86F8235337 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5463C4F0C6DC04BFF61A7EB /* SnapshotHelper.swift */; };
 		C215D540352002C3FFAA6211 /* GameSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24371FAD2C123B084EF2419B /* GameSessionTests.swift */; };
 		C55F33AF99525142C83BE543 /* LeaveGameButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE596438816237960027FA3C /* LeaveGameButton.swift */; };
 		C6EA27062A7F8D4D040B07EE /* AvatarBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A71E4778BFCF3E541381A88 /* AvatarBadge.swift */; };
+		C7439FDCC5E307D780666B98 /* CrashSmokeUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD085219CCB7BDF4B97CF100 /* CrashSmokeUITests.swift */; };
 		C831A5EB439876C70438E014 /* GameHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CCAE13A6ED5271316121BF0 /* GameHistoryStore.swift */; };
 		D06AFC31EE87A5FACAFBEC42 /* ViewPreviewMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC10F2CA41DE3E9D91A872FB /* ViewPreviewMenuView.swift */; };
 		D07F999417D6166C1383CCD9 /* DoodleSheetHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BAEA94AD9BC434BF0C9D7D35 /* DoodleSheetHeader.swift */; };
+		D2CC2AE377DD611998421FF8 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 7BC810F89F45E87201B27E73 /* PrivacyInfo.xcprivacy */; };
 		D3E0206FAC6A592C839B35B4 /* SavedGame.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9814F03113CA9077C506D9CB /* SavedGame.swift */; };
 		DB1D012DC4987539E1920E77 /* PhaseTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB49763079055AC062F95D2E /* PhaseTimer.swift */; };
+		DD9AA5CD715C856B510E35EA /* WaitingForPlayersView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8BCE673941E0793840FA9A0 /* WaitingForPlayersView.swift */; };
 		E86B0E18B27CB5EA07D0C797 /* ConnectionPresenceViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79C075BFB044EF742B1F0EDB /* ConnectionPresenceViews.swift */; };
 		EA0AB44C1EE356F976F86BCA /* LeaveToolbarBand.swift in Sources */ = {isa = PBXBuildFile; fileRef = E467A6C61B618E3FA444D389 /* LeaveToolbarBand.swift */; };
 		ED9D38960689EA53059435E4 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C8E43D291F3A094221A19E7 /* Theme.swift */; };
 		F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */; };
+		F7D86993F1A64CBBC8459D47 /* UITesting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F7E20FC5D1F2F0C49D98B35 /* UITesting.swift */; };
 		F94E1265431FF8445488A1E6 /* PreviewStateFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C6613C1182620482C33637 /* PreviewStateFactory.swift */; };
 		F984CF36BF1649DFBB0B7922 /* GameHistoryStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D4B5314C07F7BF689C03627 /* GameHistoryStoreTests.swift */; };
 		FE2F3CEAF4BD73D656F2DF9C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92FDA77B5436CAA55ADCBC13 /* HomeView.swift */; };
@@ -62,6 +71,13 @@
 
 /* Begin PBXContainerItemProxy section */
 		54D1E0CC855F72F1B03C6417 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 023E326FE1E6DCA669DF16ED /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 1C00121FD236B9F3E72C6E52;
+			remoteInfo = Doodleoop;
+		};
+		A2C4A7F76C183D4D3E68F81E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 023E326FE1E6DCA669DF16ED /* Project object */;
 			proxyType = 1;
@@ -79,7 +95,9 @@
 		1A71E4778BFCF3E541381A88 /* AvatarBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AvatarBadge.swift; sourceTree = "<group>"; };
 		24371FAD2C123B084EF2419B /* GameSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSessionTests.swift; sourceTree = "<group>"; };
 		2E097C6BAF1C56B3AA0295E3 /* DrawingToolbar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingToolbar.swift; sourceTree = "<group>"; };
+		2F7E20FC5D1F2F0C49D98B35 /* UITesting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITesting.swift; sourceTree = "<group>"; };
 		3169D5DAB1CDA1FC656A7EF4 /* AppSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsView.swift; sourceTree = "<group>"; };
+		37E3ACEB8D2A0554EF2E3D90 /* PassingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassingView.swift; sourceTree = "<group>"; };
 		3C8E43D291F3A094221A19E7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		3E78A68452B445EE2B9A2E37 /* LobbyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LobbyView.swift; sourceTree = "<group>"; };
 		4598A414FAF3EB9B463EB526 /* DrawingPhotoExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DrawingPhotoExport.swift; sourceTree = "<group>"; };
@@ -98,6 +116,7 @@
 		7786F8849BC7B3AC2C843D86 /* NetworkPartyTransport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkPartyTransport.swift; sourceTree = "<group>"; };
 		78C6613C1182620482C33637 /* PreviewStateFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewStateFactory.swift; sourceTree = "<group>"; };
 		79C075BFB044EF742B1F0EDB /* ConnectionPresenceViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionPresenceViews.swift; sourceTree = "<group>"; };
+		7BC810F89F45E87201B27E73 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		7D4B5314C07F7BF689C03627 /* GameHistoryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameHistoryStoreTests.swift; sourceTree = "<group>"; };
 		824E8B0B80107A0F58F5A186 /* ReadOnlyDrawingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadOnlyDrawingView.swift; sourceTree = "<group>"; };
 		85F5B0B1B0E6DD6BD831EBEF /* GameEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameEngine.swift; sourceTree = "<group>"; };
@@ -108,8 +127,12 @@
 		9EC3B7FFD203C8D5DDC288F3 /* StrokeRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StrokeRenderer.swift; sourceTree = "<group>"; };
 		A1529A05222CCB1BD0318F56 /* SessionAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionAlert.swift; sourceTree = "<group>"; };
 		A2C54EC527A9DFBB69F9D40F /* DeviceIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceIdentity.swift; sourceTree = "<group>"; };
+		A35F44B0AC9E782F7B30CEDA /* ScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
+		A5463C4F0C6DC04BFF61A7EB /* SnapshotHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
 		ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuessingView.swift; sourceTree = "<group>"; };
 		AEC7C9089783F01E9B8C3437 /* RoundCategories.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundCategories.swift; sourceTree = "<group>"; };
+		B21194CA98055FF6201315CC /* ShimmerText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShimmerText.swift; sourceTree = "<group>"; };
+		B775E4D4173C254BF33BA75B /* AppLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLinks.swift; sourceTree = "<group>"; };
 		BAEA94AD9BC434BF0C9D7D35 /* DoodleSheetHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleSheetHeader.swift; sourceTree = "<group>"; };
 		BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C260CDB7F36531A79B556B65 /* Doodleoop.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Doodleoop.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -118,7 +141,10 @@
 		D13BA31F8D554B289877E705 /* DoodleIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleIconButton.swift; sourceTree = "<group>"; };
 		D2378A75C5C0F0A26B854DF8 /* PhosphorIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhosphorIcon.swift; sourceTree = "<group>"; };
 		D73E386964A91B901D348681 /* DoodleTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DoodleTextField.swift; sourceTree = "<group>"; };
+		D841225941BFE3935BE5BA7F /* DoodleoopUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DoodleoopUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D84840D7FCCB04D99D9836AF /* GameSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameSession.swift; sourceTree = "<group>"; };
+		D8BCE673941E0793840FA9A0 /* WaitingForPlayersView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WaitingForPlayersView.swift; sourceTree = "<group>"; };
+		DD085219CCB7BDF4B97CF100 /* CrashSmokeUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CrashSmokeUITests.swift; sourceTree = "<group>"; };
 		E41DC645569C9B10BE37DB14 /* DoodleoopTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = DoodleoopTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E467A6C61B618E3FA444D389 /* LeaveToolbarBand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaveToolbarBand.swift; sourceTree = "<group>"; };
 		EE596438816237960027FA3C /* LeaveGameButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaveGameButton.swift; sourceTree = "<group>"; };
@@ -131,10 +157,12 @@
 		2A72F0480324478D2869FB3E /* Doodleoop */ = {
 			isa = PBXGroup;
 			children = (
+				B775E4D4173C254BF33BA75B /* AppLinks.swift */,
 				BEC06E1D62128A03BD3DA0D6 /* Assets.xcassets */,
 				0C197988DB66529732A5329B /* ContentView.swift */,
 				571AE632BF0670084F7EDC57 /* DoodleoopApp.swift */,
 				0AA9919AF1010F8FE1C0D385 /* Info.plist */,
+				7BC810F89F45E87201B27E73 /* PrivacyInfo.xcprivacy */,
 				66190B67B44354BFC3C212AD /* Fonts */,
 				9E82349AF48EEA17A9B4B04E /* Models */,
 				6F7641261673D9E5B10ADE6F /* Networking */,
@@ -167,7 +195,9 @@
 				4CA0FF03EB5FAD68B4D36C33 /* Paper.swift */,
 				EEFAE0AB3540E0E057D8DE60 /* PhaseCountdown.swift */,
 				D2378A75C5C0F0A26B854DF8 /* PhosphorIcon.swift */,
+				B21194CA98055FF6201315CC /* ShimmerText.swift */,
 				3C8E43D291F3A094221A19E7 /* Theme.swift */,
+				D8BCE673941E0793840FA9A0 /* WaitingForPlayersView.swift */,
 			);
 			path = Theme;
 			sourceTree = "<group>";
@@ -195,6 +225,7 @@
 				78C6613C1182620482C33637 /* PreviewStateFactory.swift */,
 				67BFA80C39CACEBFE64548A1 /* SeatHandoff.swift */,
 				A1529A05222CCB1BD0318F56 /* SessionAlert.swift */,
+				2F7E20FC5D1F2F0C49D98B35 /* UITesting.swift */,
 			);
 			path = Networking;
 			sourceTree = "<group>";
@@ -204,6 +235,7 @@
 			children = (
 				2A72F0480324478D2869FB3E /* Doodleoop */,
 				B056C997A40999BA52C59A6C /* DoodleoopTests */,
+				F0CAED578E8DB12E804430DF /* DoodleoopUITests */,
 				94166CCFB4E75C3432AB87E2 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -213,6 +245,7 @@
 			children = (
 				C260CDB7F36531A79B556B65 /* Doodleoop.app */,
 				E41DC645569C9B10BE37DB14 /* DoodleoopTests.xctest */,
+				D841225941BFE3935BE5BA7F /* DoodleoopUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -250,6 +283,7 @@
 				ABE7D6AA9854510A2810D2A6 /* GuessingView.swift */,
 				92FDA77B5436CAA55ADCBC13 /* HomeView.swift */,
 				3E78A68452B445EE2B9A2E37 /* LobbyView.swift */,
+				37E3ACEB8D2A0554EF2E3D90 /* PassingView.swift */,
 				FB49763079055AC062F95D2E /* PhaseTimer.swift */,
 				824E8B0B80107A0F58F5A186 /* ReadOnlyDrawingView.swift */,
 				6921FC6D66D9F4FE6A27EF11 /* RevealView.swift */,
@@ -258,6 +292,16 @@
 				43E444EA05A6F2FEB21E75DD /* Drawing */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		F0CAED578E8DB12E804430DF /* DoodleoopUITests */ = {
+			isa = PBXGroup;
+			children = (
+				DD085219CCB7BDF4B97CF100 /* CrashSmokeUITests.swift */,
+				A35F44B0AC9E782F7B30CEDA /* ScreenshotTests.swift */,
+				A5463C4F0C6DC04BFF61A7EB /* SnapshotHelper.swift */,
+			);
+			path = DoodleoopUITests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -299,6 +343,24 @@
 			productReference = E41DC645569C9B10BE37DB14 /* DoodleoopTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		9B9445ED023C2AB31FCABE40 /* DoodleoopUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 40E6443CC0ECFCDF37ED1CD0 /* Build configuration list for PBXNativeTarget "DoodleoopUITests" */;
+			buildPhases = (
+				2FCB63D6C9FF7E0519A66C55 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E5956574E84C2FB1A1E04DCC /* PBXTargetDependency */,
+			);
+			name = DoodleoopUITests;
+			packageProductDependencies = (
+			);
+			productName = DoodleoopUITests;
+			productReference = D841225941BFE3935BE5BA7F /* DoodleoopUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -308,6 +370,16 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					1C00121FD236B9F3E72C6E52 = {
+						DevelopmentTeam = F472GKBUAR;
+					};
+					24C5C6B7E4AE9432AA2927D2 = {
+						DevelopmentTeam = F472GKBUAR;
+					};
+					9B9445ED023C2AB31FCABE40 = {
+						DevelopmentTeam = F472GKBUAR;
+						TestTargetID = 1C00121FD236B9F3E72C6E52;
+					};
 				};
 			};
 			buildConfigurationList = 599C91D1B12D70E2004F34A5 /* Build configuration list for PBXProject "Doodleoop" */;
@@ -326,6 +398,7 @@
 			targets = (
 				1C00121FD236B9F3E72C6E52 /* Doodleoop */,
 				24C5C6B7E4AE9432AA2927D2 /* DoodleoopTests */,
+				9B9445ED023C2AB31FCABE40 /* DoodleoopUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -337,6 +410,7 @@
 			files = (
 				F018DF1CB39B11F14BBE4AF6 /* Assets.xcassets in Resources */,
 				33284C1FCAE6E8477CC7511D /* Fraunces_72pt-Bold.ttf in Resources */,
+				D2CC2AE377DD611998421FF8 /* PrivacyInfo.xcprivacy in Resources */,
 				33176D892C0CCAD2E7E9BCF2 /* SpaceMono-Bold.ttf in Resources */,
 				B6446F3B4BB9E8FBF99BE7B4 /* SpaceMono-Regular.ttf in Resources */,
 			);
@@ -345,11 +419,22 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2FCB63D6C9FF7E0519A66C55 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C7439FDCC5E307D780666B98 /* CrashSmokeUITests.swift in Sources */,
+				21352F7E95870A0E852511EC /* ScreenshotTests.swift in Sources */,
+				BE2237025B1FCD86F8235337 /* SnapshotHelper.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		B39F8865131FDD0747D1E7B2 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				6A241B9EACA6CD3F311F8A52 /* AppLifecyclePhase.swift in Sources */,
+				8754C371A5C5D669933EB009 /* AppLinks.swift in Sources */,
 				6AF0CF9DAC679C2DFAD02392 /* AppSettingsView.swift in Sources */,
 				C6EA27062A7F8D4D040B07EE /* AvatarBadge.swift in Sources */,
 				5DEC14BB7A5F6146F4F2DF04 /* Buttons.swift in Sources */,
@@ -379,6 +464,7 @@
 				98AAFD43EA68E82170B7AAEA /* NetworkPartyTransport.swift in Sources */,
 				0DC02630F7C34334D7DFA1F9 /* Paper.swift in Sources */,
 				4CEF14AA537E58A5255F4DA8 /* PartyTransport.swift in Sources */,
+				5D223348E2413936A359E383 /* PassingView.swift in Sources */,
 				7584A60EDA17E8BB55F154FF /* PhaseCountdown.swift in Sources */,
 				DB1D012DC4987539E1920E77 /* PhaseTimer.swift in Sources */,
 				9F109CB5DE756C1EE11BA0D2 /* PhosphorIcon.swift in Sources */,
@@ -389,9 +475,12 @@
 				D3E0206FAC6A592C839B35B4 /* SavedGame.swift in Sources */,
 				35FA9C1469D1FF816DBE2064 /* SeatHandoff.swift in Sources */,
 				26A571DDABF4C5744DF21E06 /* SessionAlert.swift in Sources */,
+				51B163E77EBFCADF3CF8E702 /* ShimmerText.swift in Sources */,
 				5D98C008DFCBE2BE439FBB6E /* StrokeRenderer.swift in Sources */,
 				ED9D38960689EA53059435E4 /* Theme.swift in Sources */,
+				F7D86993F1A64CBBC8459D47 /* UITesting.swift in Sources */,
 				D06AFC31EE87A5FACAFBEC42 /* ViewPreviewMenuView.swift in Sources */,
+				DD9AA5CD715C856B510E35EA /* WaitingForPlayersView.swift in Sources */,
 				77EC16390D58E32F5E61C464 /* ZoomableDrawingView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -413,6 +502,11 @@
 			isa = PBXTargetDependency;
 			target = 1C00121FD236B9F3E72C6E52 /* Doodleoop */;
 			targetProxy = 54D1E0CC855F72F1B03C6417 /* PBXContainerItemProxy */;
+		};
+		E5956574E84C2FB1A1E04DCC /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 1C00121FD236B9F3E72C6E52 /* Doodleoop */;
+			targetProxy = A2C4A7F76C183D4D3E68F81E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -481,6 +575,24 @@
 			};
 			name = Debug;
 		};
+		283DB6DAC2025200A7520D5F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = F472GKBUAR;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Doodleoop;
+			};
+			name = Debug;
+		};
 		454973F481256D9BE7D3AC00 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -542,6 +654,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = F472GKBUAR;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -555,18 +668,37 @@
 			};
 			name = Release;
 		};
+		7716053F383B7DBB5D5E1AD6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = F472GKBUAR;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = Doodleoop;
+			};
+			name = Release;
+		};
 		9B71A58EE0A65AE9535DDF44 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F472GKBUAR;
 				INFOPLIST_FILE = Doodleoop/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop;
 				PRODUCT_NAME = Doodleoop;
 				SDKROOT = iphoneos;
@@ -580,12 +712,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = F472GKBUAR;
 				INFOPLIST_FILE = Doodleoop/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = 1.0.0;
 				PRODUCT_BUNDLE_IDENTIFIER = co.utopastac.doodleoop;
 				PRODUCT_NAME = Doodleoop;
 				SDKROOT = iphoneos;
@@ -597,6 +730,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
+				DEVELOPMENT_TEAM = F472GKBUAR;
 				GENERATE_INFOPLIST_FILE = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -618,6 +752,15 @@
 			buildConfigurations = (
 				F632582D2AABDEF298C9CE8D /* Debug */,
 				63222AA1659C76C6F0D98B34 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		40E6443CC0ECFCDF37ED1CD0 /* Build configuration list for PBXNativeTarget "DoodleoopUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				283DB6DAC2025200A7520D5F /* Debug */,
+				7716053F383B7DBB5D5E1AD6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

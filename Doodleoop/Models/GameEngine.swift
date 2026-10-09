@@ -10,8 +10,12 @@ enum GameEngine {
   ) -> GameState {
     var next = state
     guard next.phase == .lobby else { return state }
+    guard next.players.count < GamePartyLimits.maxPlayers else { return state }
     guard !next.players.contains(where: { $0.id == id }) else { return state }
-    next.players.append(Player(id: id, deviceId: deviceId, name: name, avatar: avatar))
+    let seatName = GamePartyLimits.sanitizedName(name)
+    next.players.append(
+      Player(id: id, deviceId: deviceId, name: seatName, avatar: avatar.capped())
+    )
     if next.hostId.isEmpty {
       next.hostId = id
     }
@@ -82,7 +86,7 @@ enum GameEngine {
         in: next,
         now: now
       )
-    case .reveal, .roundOver:
+    case .passing, .reveal, .roundOver:
       var next = state
       next.absentDeviceIds.insert(deviceId)
       return next
@@ -92,14 +96,14 @@ enum GameEngine {
   static func updateName(playerId: String, name: String, in state: GameState) -> GameState {
     var next = state
     guard let index = next.playerIndex(playerId) else { return state }
-    next.players[index].name = name
+    next.players[index].name = GamePartyLimits.sanitizedName(name)
     return next
   }
 
   static func updateAvatar(playerId: String, avatar: Drawing, in state: GameState) -> GameState {
     var next = state
     guard let index = next.playerIndex(playerId) else { return state }
-    next.players[index].avatar = avatar
+    next.players[index].avatar = avatar.capped()
     return next
   }
 
@@ -121,11 +125,13 @@ enum GameEngine {
   }
 
   /// Starts a round: every seat draws the shared category first.
+  /// Needs at least 3 seats so the pad can go draw → guess → draw without
+  /// the starter redrawing their own pad.
   static func startRound(category: String, in state: GameState, now: Date = Date()) -> GameState {
     var next = state
-    let trimmed = category.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = GamePartyLimits.sanitizedCategory(category)
     guard next.phase == .lobby || next.phase == .roundOver else { return state }
-    guard next.players.count >= 2, !trimmed.isEmpty else { return state }
+    guard next.players.count >= GameRoundDefaults.minPlayers, !trimmed.isEmpty else { return state }
 
     next.category = trimmed
     next.turnIndex = 0
@@ -151,14 +157,15 @@ enum GameEngine {
     guard next.phase == .drawing, next.isDrawTurn else { return state }
     guard next.players.contains(where: { $0.id == playerId }) else { return state }
     guard !next.submittedPlayerIds.contains(playerId) else { return state }
-    guard !drawing.isEmpty else { return state }
+    let ink = drawing.capped()
+    guard !ink.isEmpty else { return state }
     guard var pad = next.pad(inFrontOf: playerId),
           let padIndex = next.pads.firstIndex(where: { $0.id == pad.id }) else { return state }
 
-    pad.steps.append(.drawing(playerId: playerId, drawing: drawing))
+    pad.steps.append(.drawing(playerId: playerId, drawing: ink))
     next.pads[padIndex] = pad
     next.submittedPlayerIds.insert(playerId)
-    return advanceIfReady(next, now: now)
+    return advanceIfReady(next)
   }
 
   static func submitGuess(
@@ -168,7 +175,7 @@ enum GameEngine {
     now: Date = Date()
   ) -> GameState {
     var next = state
-    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    let trimmed = GamePartyLimits.sanitizedGuess(text)
     guard next.phase == .guessing, !next.isDrawTurn else { return state }
     guard next.players.contains(where: { $0.id == playerId }) else { return state }
     guard !next.submittedPlayerIds.contains(playerId) else { return state }
@@ -179,7 +186,7 @@ enum GameEngine {
     pad.steps.append(.guess(playerId: playerId, text: trimmed))
     next.pads[padIndex] = pad
     next.submittedPlayerIds.insert(playerId)
-    return advanceIfReady(next, now: now)
+    return advanceIfReady(next)
   }
 
   /// When the turn timer expires, fill missing submissions and advance.
@@ -188,6 +195,21 @@ enum GameEngine {
     guard next.phase == .drawing || next.phase == .guessing else { return state }
     guard let ends = next.phaseEndsAt, now >= ends else { return state }
     return fillEmptySubmissions(forDeviceId: nil, in: next, now: now)
+  }
+
+  /// Host begins the next drawing or guessing turn after pads have passed.
+  static func startNextTurn(in state: GameState, now: Date = Date()) -> GameState {
+    var next = state
+    guard next.phase == .passing else { return state }
+    guard !next.isRoundComplete else { return state }
+
+    next.phase = next.isDrawTurn ? .drawing : .guessing
+    next.phaseEndsAt = now.addingTimeInterval(TimeInterval(next.currentTurnTimeLimitSeconds))
+    // Absent devices auto-submit so the turn does not wait on a timer.
+    if !next.absentDeviceIds.isEmpty {
+      next = fillEmptySubmissions(forDeviceId: nil, onlyAbsent: true, in: next, now: now)
+    }
+    return next
   }
 
   /// Reveals the next contribution on the current pad, then moves to the next pad,
@@ -200,7 +222,8 @@ enum GameEngine {
       next.revealStepIndex += 1
     } else if next.revealPadIndex + 1 < next.pads.count {
       next.revealPadIndex += 1
-      next.revealStepIndex = min(1, next.currentRevealContributions.count)
+      // Intro screen for the next pad (Start reveals the first contribution).
+      next.revealStepIndex = 0
     } else {
       next.phase = .roundOver
     }
@@ -253,10 +276,10 @@ enum GameEngine {
       next.pads[padIndex] = pad
       next.submittedPlayerIds.insert(player.id)
     }
-    return advanceIfReady(next, now: now)
+    return advanceIfReady(next)
   }
 
-  private static func advanceIfReady(_ state: GameState, now: Date) -> GameState {
+  private static func advanceIfReady(_ state: GameState) -> GameState {
     var next = state
     guard next.allSubmitted else { return next }
 
@@ -266,18 +289,15 @@ enum GameEngine {
     if next.isRoundComplete {
       next.phase = .reveal
       next.revealPadIndex = 0
-      // Start with the first drawing already visible on pad 0.
-      next.revealStepIndex = min(1, next.currentRevealContributions.count)
+      // Intro screen for pad 0 (Start reveals the first contribution).
+      next.revealStepIndex = 0
       next.phaseEndsAt = nil
       return next
     }
 
-    next.phase = next.isDrawTurn ? .drawing : .guessing
-    next.phaseEndsAt = now.addingTimeInterval(TimeInterval(next.currentTurnTimeLimitSeconds))
-    // Absent devices auto-submit so the next turn does not wait on a timer.
-    if !next.absentDeviceIds.isEmpty {
-      next = fillEmptySubmissions(forDeviceId: nil, onlyAbsent: true, in: next, now: now)
-    }
+    // Host starts the next draw/guess from the passing screen.
+    next.phase = .passing
+    next.phaseEndsAt = nil
     return next
   }
 

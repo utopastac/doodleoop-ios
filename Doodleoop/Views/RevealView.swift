@@ -37,63 +37,104 @@ struct RevealView: View {
     let starter = pad.flatMap { state?.player(id: $0.id) }
     let padIndex = state?.revealPadIndex ?? 0
     let steps = RevealStep.list(state?.visibleRevealContributions ?? [], padIndex: padIndex)
+    let intro = state?.isRevealPadIntro == true
     let finished = state?.isRevealFinished == true
     let category = state?.category.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let advanceTitle = intro ? "Start" : (finished ? "Finish" : "Next")
 
     VStack(spacing: 0) {
       padHeader(starterName: starter?.name)
 
-      ScrollViewReader { proxy in
-        ScrollView {
-          VStack(spacing: 0) {
-            if !category.isEmpty {
-              categoryBlock(category)
-                .id(categoryScrollID)
-              GridLine(axis: .horizontal)
-            }
-
-            ForEach(steps) { item in
-              // Step and its rule animate as one block so the page grows in one move.
-              VStack(spacing: 0) {
-                stepBlock(item.step, state: state, isFirstContribution: item.index == 0 && !category.isEmpty)
+      if intro {
+        padIntro(starterName: starter?.name, category: category)
+          .transition(.opacity)
+      } else {
+        ScrollViewReader { proxy in
+          ScrollView {
+            VStack(spacing: 0) {
+              if !category.isEmpty {
+                categoryBlock(category)
+                  .id(categoryScrollID)
                 GridLine(axis: .horizontal)
               }
-              .id(item.id)
-              .transition(transition(for: item.step))
+
+              ForEach(steps) { item in
+                // Step and its rule animate as one block so the page grows in one move.
+                VStack(spacing: 0) {
+                  stepBlock(item.step, state: state, isFirstContribution: item.index == 0 && !category.isEmpty)
+                  GridLine(axis: .horizontal)
+                }
+                .id(item.id)
+                .transition(transition(for: item.step))
+              }
+            }
+            .pageHorizontalPadding()
+            .padding(.bottom, Theme.Spacing.s4)
+            .animation(Theme.Motion.reveal, value: steps.map(\.id))
+          }
+          .onChange(of: RevealScrollTarget(padIndex: padIndex, count: steps.count)) { previous, current in
+            guard current.count > 0 else { return }
+            withAnimation(Theme.Motion.reveal) {
+              if current.padIndex != previous.padIndex {
+                proxy.scrollTo(
+                  category.isEmpty ? RevealStep.id(padIndex: current.padIndex, index: 0) : categoryScrollID,
+                  anchor: .top
+                )
+              } else {
+                proxy.scrollTo(
+                  RevealStep.id(padIndex: current.padIndex, index: current.count - 1),
+                  anchor: .bottom
+                )
+              }
             }
           }
-          .pageHorizontalPadding()
-          .padding(.bottom, Theme.Spacing.s4)
-          .animation(Theme.Motion.reveal, value: steps.map(\.id))
         }
-        .onChange(of: RevealScrollTarget(padIndex: padIndex, count: steps.count)) { previous, current in
-          guard current.count > 0 else { return }
-          withAnimation(Theme.Motion.reveal) {
-            if current.padIndex != previous.padIndex {
-              proxy.scrollTo(
-                category.isEmpty ? RevealStep.id(padIndex: current.padIndex, index: 0) : categoryScrollID,
-                anchor: .top
-              )
-            } else {
-              proxy.scrollTo(
-                RevealStep.id(padIndex: current.padIndex, index: current.count - 1),
-                anchor: .bottom
-              )
-            }
-          }
-        }
+        .transition(.opacity)
       }
 
-      Button(DoodleLabel.bracketed(finished ? "Finish" : "Next")) {
-        session.advanceReveal()
+      if session.isHost {
+        Button(DoodleLabel.bracketed(advanceTitle)) {
+          session.advanceReveal()
+        }
+        .doodleButton(.primary)
+        .accessibilityIdentifier("advance-reveal")
+        .pageHorizontalPadding()
+        .padding(.top, Theme.Spacing.s6)
+        .padding(.bottom, Theme.Spacing.s3)
+      } else {
+        ShimmerText(text: "Waiting for host…", style: .caption)
+          .frame(maxWidth: .infinity)
+          .pageHorizontalPadding()
+          .padding(.top, Theme.Spacing.s6)
+          .padding(.bottom, Theme.Spacing.s3)
       }
-      .doodleButton(.primary)
-      .pageHorizontalPadding()
-      .padding(.top, Theme.Spacing.s6)
-      .padding(.bottom, Theme.Spacing.s3)
     }
+    .animation(Theme.Motion.reveal, value: intro)
     .paperBackground()
     .pageMargins()
+  }
+
+  /// Figma "Reveal pad" — shown before the first contribution on each pad.
+  private func padIntro(starterName: String?, category: String) -> some View {
+    let name = starterName ?? "Player"
+    let headline: String = {
+      if category.isEmpty {
+        return "Let’s see \(name)’s drawing"
+      }
+      return "Let’s see \(name)’s drawing of \(category)"
+    }()
+
+    return VStack(spacing: 0) {
+      Spacer(minLength: 0)
+      Text(headline)
+        .themeText(.heading)
+        .foregroundStyle(Theme.Text.primary)
+        .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s11, alignment: .leading)
+        .padding(.horizontal, Theme.Spacing.s2)
+        .pageHorizontalPadding()
+        .accessibilityAddTraits(.isHeader)
+      Spacer(minLength: 0)
+    }
   }
 
   /// Rises into place on insert; removals fade so a pad swap reads as a crossfade.
@@ -280,7 +321,7 @@ struct RoundOverView: View {
 
   /// 40pt title band with leave control — same layout as the reveal header.
   private var header: some View {
-    LeaveToolbarBand(title: "Doodloop complete")
+    LeaveToolbarBand(title: "Doodleoop complete")
       .gridBand()
   }
 
@@ -305,9 +346,7 @@ struct RoundOverView: View {
         .lineLimit(1)
         .minimumScaleFactor(0.85)
       } else {
-        Text("Waiting for the host to pick what's next.")
-          .themeText(.label)
-          .foregroundStyle(Theme.Text.secondary)
+        ShimmerText(text: "Waiting for the host to pick what's next")
           .frame(maxWidth: .infinity, minHeight: Theme.Spacing.s9, alignment: .leading)
       }
     }
