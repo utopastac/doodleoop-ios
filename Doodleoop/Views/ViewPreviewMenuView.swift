@@ -11,6 +11,8 @@ enum ViewPreview: String, CaseIterable, Identifiable {
   case reveal
   case roundOver
   case handoffOverlay
+  case reconnecting
+  case hostMigration
   case avatarSetup
   case paperStyles
 
@@ -28,7 +30,7 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     switch self {
     case .avatarSetup, .paperStyles:
       return .standalone
-    case .handoffOverlay:
+    case .handoffOverlay, .reconnecting, .hostMigration:
       return .overlays
     default:
       return .gamePhases
@@ -47,6 +49,8 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     case .reveal: return "Reveal"
     case .roundOver: return "Round Over"
     case .handoffOverlay: return "Pass-the-Phone Handoff"
+    case .reconnecting: return "Reconnecting Overlay"
+    case .hostMigration: return "Host Migration Overlay"
     case .avatarSetup: return "Avatar Setup"
     case .paperStyles: return "Paper Styles"
     }
@@ -64,6 +68,8 @@ enum ViewPreview: String, CaseIterable, Identifiable {
     case .reveal: return "Reveal each pad one step at a time"
     case .roundOver: return "Loop complete celebration"
     case .handoffOverlay: return "Full-screen seat handoff gate"
+    case .reconnecting: return "Joiner looking for the host after a drop"
+    case .hostMigration: return "Electing / seeking a new network host"
     case .avatarSetup: return "First-run doodle avatar"
     case .paperStyles: return "Plain, dots, crosses, rules, parchment, textured, canvas"
     }

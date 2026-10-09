@@ -414,4 +414,98 @@ final class GameSessionTests: XCTestCase {
     XCTAssertEqual(joiner?.status, .reconnecting)
     XCTAssertTrue(session.showsConnectionStrip)
   }
+
+  func testHostPhaseExpiredFillsAndAdvances() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store, deviceId: "host")
+    let recorder = RecordingMessageTransport()
+    var state = playableLobbyState()
+    state = GameEngine.startRound(category: "Food", in: state)
+    state.phaseEndsAt = Date().addingTimeInterval(-1)
+    session.testing_configure(role: .host, state: state, messageTransport: recorder)
+
+    session.testing_handlePhaseExpired()
+
+    XCTAssertNotEqual(session.state?.phase, .drawing)
+    XCTAssertTrue(recorder.sent.contains { if case .syncState = $0 { return true }; return false })
+  }
+
+  func testHostPhaseExpiredNoOpsBeforeDeadline() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store, deviceId: "host")
+    let recorder = RecordingMessageTransport()
+    var state = playableLobbyState()
+    state = GameEngine.startRound(category: "Food", in: state)
+    state.phaseEndsAt = Date().addingTimeInterval(60)
+    session.testing_configure(role: .host, state: state, messageTransport: recorder)
+
+    session.testing_handlePhaseExpired()
+
+    XCTAssertEqual(session.state?.phase, .drawing)
+    XCTAssertTrue(recorder.sent.isEmpty)
+  }
+
+  func testJoinerPhaseExpiredIsIgnored() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store, deviceId: "joiner")
+    var state = playableLobbyState()
+    state = GameEngine.startRound(category: "Food", in: state)
+    state.phaseEndsAt = Date().addingTimeInterval(-1)
+    session.testing_configure(role: .joiner, state: state)
+
+    session.testing_handlePhaseExpired()
+
+    XCTAssertEqual(session.state?.phase, .drawing)
+  }
+
+  func testPassAndPlayHandoffPromptsNextLocalSeat() throws {
+    let store = try makeHistoryStore()
+    let device = "phone-a"
+    let session = GameSession(historyStore: store, deviceId: device)
+    var state = GameState()
+    state = GameEngine.addPlayer(id: device, name: "Blake", deviceId: device, to: state)
+    state = GameEngine.addPlayer(id: "seat-2", name: "Casey", deviceId: device, to: state)
+    state = GameEngine.addPlayer(id: "remote", name: "Drew", deviceId: "phone-b", to: state)
+    state = GameEngine.startRound(category: "Food", in: state)
+    session.testing_configure(role: .host, state: state, localPlayerId: device)
+
+    session.testing_prepareLocalHandoffIfNeeded()
+
+    XCTAssertEqual(session.localPlayerId, device)
+    XCTAssertEqual(session.handoff?.playerId, device)
+    XCTAssertEqual(session.handoff?.title, "Pass the phone")
+    XCTAssertTrue(session.handoff?.message.contains("Blake") == true)
+    XCTAssertTrue(session.handoff?.message.contains("draw") == true)
+  }
+
+  func testPassAndPlayHandoffAdvancesAfterLocalSubmit() throws {
+    let store = try makeHistoryStore()
+    let device = "phone-a"
+    let session = GameSession(historyStore: store, deviceId: device)
+    var state = GameState()
+    state = GameEngine.addPlayer(id: device, name: "Blake", deviceId: device, to: state)
+    state = GameEngine.addPlayer(id: "seat-2", name: "Casey", deviceId: device, to: state)
+    state = GameEngine.addPlayer(id: "remote", name: "Drew", deviceId: "phone-b", to: state)
+    state = GameEngine.startRound(category: "Food", in: state)
+    state = GameEngine.submitDrawing(
+      playerId: device,
+      drawing: Drawing(strokes: [Stroke(points: [DrawPoint(x: 0.1, y: 0.1)])]),
+      in: state
+    )
+    session.testing_configure(role: .host, state: state, localPlayerId: device)
+
+    session.testing_prepareLocalHandoffIfNeeded()
+
+    XCTAssertEqual(session.localPlayerId, "seat-2")
+    XCTAssertEqual(session.handoff?.playerId, "seat-2")
+    XCTAssertTrue(session.handoff?.message.contains("Casey") == true)
+  }
+
+  func testHandoffClearsOutsideDrawOrGuess() throws {
+    let store = try makeHistoryStore()
+    let session = GameSession(historyStore: store, deviceId: "host")
+    session.testing_configure(role: .host, state: lobbyState(), localPlayerId: "host")
+    session.testing_prepareLocalHandoffIfNeeded()
+    XCTAssertNil(session.handoff)
+  }
 }

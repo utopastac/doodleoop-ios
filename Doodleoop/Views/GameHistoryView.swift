@@ -112,6 +112,7 @@ private struct HistoryItemRow: View {
       GridLine(axis: .horizontal)
     }
     .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("history-item")
   }
 
   @ViewBuilder
@@ -291,6 +292,7 @@ private struct HistoryPadRow: View {
       GridLine(axis: .horizontal)
     }
     .accessibilityElement(children: .combine)
+    .accessibilityIdentifier("history-pad")
   }
 
   /// 2×2 block of 52pt thumbnails, flush to the trailing rail.

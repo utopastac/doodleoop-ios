@@ -47,6 +47,146 @@ struct DrawingUndoStack {
   }
 }
 
+/// Finger samples → in-progress stroke. Pure so unit tests can drive the capture path.
+struct LiveStrokeSession {
+  /// Keep real samples only — never invent chord midpoints (those force polygons).
+  static let minSpacing: CGFloat = 0.7
+  /// Near-duplicate end points merge instead of stacking a tip blob.
+  static let endMergeEpsilon = 0.0005
+
+  private(set) var currentStroke: Stroke?
+  private var lastSampleTime: TimeInterval?
+  private var lastSampleLocation: CGPoint?
+  private var smoothedPenWidth: Double?
+
+  var isLiveErasing: Bool { currentStroke?.tool.isEraser == true }
+
+  mutating func appendSample(
+    at location: CGPoint,
+    timestamp: TimeInterval,
+    in size: CGSize,
+    tool: DrawingTool,
+    colorHex: String,
+    lineWidth: Double
+  ) {
+    let canvasWidth = max(size.width, 1)
+    let canvasHeight = max(size.height, 1)
+
+    let pointWidth = penPointWidth(
+      at: location,
+      now: timestamp,
+      canvasWidth: canvasWidth,
+      canvasHeight: canvasHeight,
+      tool: tool,
+      lineWidth: lineWidth
+    )
+
+    let point = DrawPoint(
+      x: location.x / canvasWidth,
+      y: location.y / canvasHeight,
+      lineWidth: pointWidth
+    )
+
+    if currentStroke == nil {
+      currentStroke = Stroke(
+        points: [point],
+        lineWidth: lineWidth,
+        tool: tool,
+        colorHex: colorHex
+      )
+      lastSampleTime = timestamp
+      lastSampleLocation = location
+      smoothedPenWidth = pointWidth
+      return
+    }
+
+    guard let last = currentStroke?.points.last else { return }
+    let dx = (point.x - last.x) * canvasWidth
+    let dy = (point.y - last.y) * canvasHeight
+    let distance = hypot(dx, dy)
+
+    if distance < Self.minSpacing {
+      if tool == .pen, var stroke = currentStroke, !stroke.points.isEmpty {
+        stroke.points[stroke.points.count - 1].lineWidth = pointWidth
+        currentStroke = stroke
+      }
+      lastSampleTime = timestamp
+      lastSampleLocation = location
+      return
+    }
+
+    currentStroke?.points.append(point)
+    lastSampleTime = timestamp
+    lastSampleLocation = location
+  }
+
+  /// Completes the in-progress stroke, or `nil` if nothing was captured.
+  mutating func finish(
+    at location: CGPoint,
+    in size: CGSize,
+    tool: DrawingTool,
+    lineWidth: Double
+  ) -> Stroke? {
+    defer {
+      currentStroke = nil
+      lastSampleTime = nil
+      lastSampleLocation = nil
+      smoothedPenWidth = nil
+    }
+
+    guard var stroke = currentStroke else { return nil }
+
+    let canvasWidth = max(size.width, 1)
+    let canvasHeight = max(size.height, 1)
+    let endWidth: Double? = {
+      guard tool == .pen else { return nil }
+      // Keep the live tip width — don't force a thin end blob.
+      return max(0.6, smoothedPenWidth ?? lineWidth)
+    }()
+    let end = DrawPoint(
+      x: location.x / canvasWidth,
+      y: location.y / canvasHeight,
+      lineWidth: endWidth
+    )
+    if let last = stroke.points.last,
+       abs(last.x - end.x) < Self.endMergeEpsilon,
+       abs(last.y - end.y) < Self.endMergeEpsilon {
+      stroke.points[stroke.points.count - 1].lineWidth = endWidth ?? last.lineWidth
+    } else {
+      stroke.points.append(end)
+    }
+    return stroke
+  }
+
+  /// Pen only: map finger speed → brush width, with light smoothing.
+  private mutating func penPointWidth(
+    at location: CGPoint,
+    now: TimeInterval,
+    canvasWidth: CGFloat,
+    canvasHeight: CGFloat,
+    tool: DrawingTool,
+    lineWidth: Double
+  ) -> Double? {
+    guard tool == .pen else { return nil }
+
+    let base = lineWidth
+    guard let lastTime = lastSampleTime, let lastLocation = lastSampleLocation else {
+      return base * 1.15
+    }
+
+    let dt = max(now - lastTime, 1.0 / 240.0)
+    let dx = location.x - lastLocation.x
+    let dy = location.y - lastLocation.y
+    let scale = 390 / max(min(canvasWidth, canvasHeight), 1)
+    let speed = Double(hypot(dx, dy) * scale) / dt
+    let target = StrokeRenderer.penWidth(base: base, speedPointsPerSecond: speed)
+    let previous = smoothedPenWidth ?? base
+    let blended = previous * 0.72 + target * 0.28
+    smoothedPenWidth = blended
+    return blended
+  }
+}
+
 struct DrawingCanvas: View {
   @Binding var drawing: Drawing
   var tool: DrawingTool
@@ -61,10 +201,7 @@ struct DrawingCanvas: View {
   @Environment(\.displayScale) private var displayScale
   @Environment(\.paperStyle) private var preferredPaperStyle
 
-  @State private var currentStroke: Stroke?
-  @State private var lastSampleTime: TimeInterval?
-  @State private var lastSampleLocation: CGPoint?
-  @State private var smoothedPenWidth: Double?
+  @State private var liveStroke = LiveStrokeSession()
   @State private var bakedImage: UIImage?
   @State private var bakedStrokeCount = 0
   @State private var canvasSize: CGSize = .zero
@@ -72,7 +209,7 @@ struct DrawingCanvas: View {
   private var resolvedPaperStyle: PaperStyle { paperStyle ?? preferredPaperStyle }
 
   var body: some View {
-    let isLiveErasing = currentStroke?.tool.isEraser == true
+    let isLiveErasing = liveStroke.isLiveErasing
 
     ZStack {
       // Hide the bake while live-erasing so destinationOut can punch through ink in one canvas.
@@ -87,11 +224,11 @@ struct DrawingCanvas: View {
         if isLiveErasing {
           StrokeRenderer.drawDrawing(
             drawing,
-            liveStroke: currentStroke,
+            liveStroke: liveStroke.currentStroke,
             in: &context,
             size: size
           )
-        } else if let currentStroke {
+        } else if let currentStroke = liveStroke.currentStroke {
           // Only the in-progress stroke is redrawn while the finger moves.
           StrokeRenderer.draw(currentStroke, in: &context, size: size, live: true)
         }
@@ -130,85 +267,25 @@ struct DrawingCanvas: View {
   }
 
   private func appendSample(_ location: CGPoint, timestamp: TimeInterval, in size: CGSize) {
-    let canvasWidth = max(size.width, 1)
-    let canvasHeight = max(size.height, 1)
-
-    let pointWidth = penPointWidth(
+    liveStroke.appendSample(
       at: location,
-      now: timestamp,
-      canvasWidth: canvasWidth,
-      canvasHeight: canvasHeight
+      timestamp: timestamp,
+      in: size,
+      tool: tool,
+      colorHex: colorHex,
+      lineWidth: lineWidth
     )
-
-    let point = DrawPoint(
-      x: location.x / canvasWidth,
-      y: location.y / canvasHeight,
-      lineWidth: pointWidth
-    )
-
-    if currentStroke == nil {
-      currentStroke = Stroke(
-        points: [point],
-        lineWidth: lineWidth,
-        tool: tool,
-        colorHex: colorHex
-      )
-      lastSampleTime = timestamp
-      lastSampleLocation = location
-      smoothedPenWidth = pointWidth
-      return
-    }
-
-    guard let last = currentStroke?.points.last else { return }
-    let dx = (point.x - last.x) * canvasWidth
-    let dy = (point.y - last.y) * canvasHeight
-    let distance = hypot(dx, dy)
-    // Keep real samples only — never invent chord midpoints (those force polygons).
-    let minSpacing: CGFloat = 0.7
-
-    if distance < minSpacing {
-      if tool == .pen, var stroke = currentStroke, !stroke.points.isEmpty {
-        stroke.points[stroke.points.count - 1].lineWidth = pointWidth
-        currentStroke = stroke
-      }
-      lastSampleTime = timestamp
-      lastSampleLocation = location
-      return
-    }
-
-    currentStroke?.points.append(point)
-    lastSampleTime = timestamp
-    lastSampleLocation = location
   }
 
   private func finishStroke(at location: CGPoint, in size: CGSize) {
-    if var stroke = currentStroke {
-      let canvasWidth = max(size.width, 1)
-      let canvasHeight = max(size.height, 1)
-      let endWidth: Double? = {
-        guard tool == .pen else { return nil }
-        // Keep the live tip width — don't force a thin end blob.
-        return max(0.6, smoothedPenWidth ?? lineWidth)
-      }()
-      let end = DrawPoint(
-        x: location.x / canvasWidth,
-        y: location.y / canvasHeight,
-        lineWidth: endWidth
-      )
-      if let last = stroke.points.last,
-         abs(last.x - end.x) < 0.0005,
-         abs(last.y - end.y) < 0.0005 {
-        stroke.points[stroke.points.count - 1].lineWidth = endWidth ?? last.lineWidth
-      } else {
-        stroke.points.append(end)
-      }
-      onWillCommitStroke?()
-      drawing.strokes.append(stroke)
-    }
-    currentStroke = nil
-    lastSampleTime = nil
-    lastSampleLocation = nil
-    smoothedPenWidth = nil
+    guard let stroke = liveStroke.finish(
+      at: location,
+      in: size,
+      tool: tool,
+      lineWidth: lineWidth
+    ) else { return }
+    onWillCommitStroke?()
+    drawing.strokes.append(stroke)
   }
 
   private func updateCanvasSize(_ size: CGSize) {
@@ -235,32 +312,6 @@ struct DrawingCanvas: View {
       paperStyle: resolvedPaperStyle
     )
     bakedStrokeCount = drawing.strokes.count
-  }
-
-  /// Pen only: map finger speed → brush width, with light smoothing.
-  private func penPointWidth(
-    at location: CGPoint,
-    now: TimeInterval,
-    canvasWidth: CGFloat,
-    canvasHeight: CGFloat
-  ) -> Double? {
-    guard tool == .pen else { return nil }
-
-    let base = lineWidth
-    guard let lastTime = lastSampleTime, let lastLocation = lastSampleLocation else {
-      return base * 1.15
-    }
-
-    let dt = max(now - lastTime, 1.0 / 240.0)
-    let dx = location.x - lastLocation.x
-    let dy = location.y - lastLocation.y
-    let scale = 390 / max(min(canvasWidth, canvasHeight), 1)
-    let speed = Double(hypot(dx, dy) * scale) / dt
-    let target = StrokeRenderer.penWidth(base: base, speedPointsPerSecond: speed)
-    let previous = smoothedPenWidth ?? base
-    let blended = previous * 0.72 + target * 0.28
-    smoothedPenWidth = blended
-    return blended
   }
 }
 

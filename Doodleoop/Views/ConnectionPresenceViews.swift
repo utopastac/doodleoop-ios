@@ -106,11 +106,13 @@ struct ReconnectOverlay: View {
         Button(DoodleLabel.bracketed("Leave game"), action: onLeave)
           .doodleButton(.secondary)
           .padding(.top, Theme.Spacing.s3)
+          .accessibilityIdentifier("leave-game")
       }
       .pageHorizontalPadding()
     }
     .onAppear { spin = true }
     .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("reconnect-overlay")
   }
 }
 
@@ -156,10 +158,12 @@ struct HostMigrationOverlay: View {
         Button(DoodleLabel.bracketed("Leave game"), action: onLeave)
           .doodleButton(.secondary)
           .padding(.top, Theme.Spacing.s3)
+          .accessibilityIdentifier("leave-game")
       }
       .pageHorizontalPadding()
     }
     .onAppear { spin = true }
     .accessibilityElement(children: .contain)
+    .accessibilityIdentifier("host-migration-overlay")
   }
 }

@@ -110,6 +110,12 @@ enum DrawingPalette {
 
   /// Default to black — white is available but a poor first stroke.
   static let defaultHex = hexes[1]
+
+  /// White (and white-with-alpha) needs a visible swatch edge on paper.
+  static func isLightHex(_ hex: String) -> Bool {
+    let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased()
+    return cleaned == "FFFFFF" || cleaned == "FFFFFFFF"
+  }
 }
 
 struct Stroke: Codable, Equatable, Identifiable {
@@ -240,6 +246,12 @@ enum GamePartyLimits {
 
   static func makeJoinCode() -> String {
     (0..<joinCodeLength).map { _ in String(Int.random(in: 0...9)) }.joined()
+  }
+
+  /// Digits only, capped at `joinCodeLength`.
+  static func normalizedJoinCode(_ code: String) -> String {
+    let digits = code.filter(\.isNumber)
+    return String(digits.prefix(joinCodeLength))
   }
 }
 

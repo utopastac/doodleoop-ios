@@ -38,4 +38,23 @@ In-app Settings → About links the same Privacy / Support URLs.
 
 ## Upload
 
-Archive + upload from Xcode, or extend Fastlane deliver when ASC API keys are configured (see Empires / Numo `.env` pattern).
+```sh
+fastlane release
+```
+
+Uses the gitignored `.env` API key (same account as Empires / Numo). The lane runs unit tests and crash smoke, archives `1.0.0`, uploads the binary plus `fastlane/metadata` and framed screenshots, sets the app to free, publishes the privacy label, and submits for review.
+
+The key can register the bundle ID but cannot create a brand-new App Store Connect app. If that step stops, add the iOS app in App Store Connect, then rerun with the archive already built:
+
+```sh
+SKIP_TESTS=1 SKIP_SCREENSHOT_CAPTURE=1 fastlane release
+```
+
+| Field | Value |
+|-------|--------|
+| Name | Doodleoop |
+| Primary language | English (UK) |
+| Bundle ID | `com.archgrovehouse.doodleoop` |
+| SKU | `doodleoop-ios` |
+
+App Privacy (Data Not Collected) is set in the App Store Connect website. The public API no longer exposes that questionnaire.

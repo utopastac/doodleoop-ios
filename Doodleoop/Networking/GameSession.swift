@@ -1,6 +1,8 @@
 import Foundation
 import Observation
 
+/// Live party facade: lobby intents, one apply path, and transport wiring.
+/// Inbound host messages are decided in `HostInbox`. Reconnect and host migration live in `SessionContinuity`.
 @MainActor
 @Observable
 final class GameSession {
@@ -42,15 +44,11 @@ final class GameSession {
 
   private var transport: (any PartyTransport)?
   private var messageTransport: GameMessageTransport?
-  /// Transport peer key → durable `deviceId`.
-  private var peerDeviceIds: [String: String] = [:]
+  private var peerDirectory = PeerDirectory()
+  private let grace = DisconnectGrace()
+  private let continuity = SessionContinuity()
   private var phaseTimerTask: Task<Void, Never>?
-  private var disconnectGraceTasks: [String: Task<Void, Never>] = [:]
   private var backgroundedDuringGame = false
-  /// How long to wait for a peer to return before treating the drop as final.
-  private var disconnectGraceSeconds: TimeInterval = 15
-  /// Prior network host while seeking a migrated successor.
-  private var migrationPreviousHostDeviceId: String?
   /// Code the joiner entered (and keeps for reconnect hellos).
   private var rememberedJoinCode: String = ""
 
@@ -119,9 +117,12 @@ final class GameSession {
     return false
   }
 
-  init(historyStore: GameHistoryStore = GameHistoryStore()) {
+  init(
+    historyStore: GameHistoryStore = GameHistoryStore(),
+    deviceId: String? = nil,
+    defaults: UserDefaults = .standard
+  ) {
     self.historyStore = historyStore
-    let defaults = UserDefaults.standard
     let name = defaults.string(forKey: "displayName") ?? "Player"
     localDisplayName = name
     if defaults.string(forKey: "displayName") == nil {
@@ -129,12 +130,13 @@ final class GameSession {
     }
     localAvatar = Self.loadAvatar(from: defaults)
 
-    let id = DeviceIdentity.current()
+    let id = deviceId ?? DeviceIdentity.current(defaults: defaults)
     devicePlayerId = id
     localPlayerId = id
+    continuity.bind(ContinuityBridge(self))
   }
 
-  private static func loadAvatar(from defaults: UserDefaults) -> Drawing {
+  static func loadAvatar(from defaults: UserDefaults) -> Drawing {
     guard let data = defaults.data(forKey: avatarDefaultsKey),
           let drawing = try? JSONDecoder().decode(Drawing.self, from: data),
           !drawing.isEmpty else {
@@ -179,7 +181,7 @@ final class GameSession {
   /// Connect to a discovered host after the player enters the spoken join code.
   func join(_ peer: DiscoveredPeer, code: String) {
     guard role == .joiner else { return }
-    let normalized = Self.normalizedJoinCode(code)
+    let normalized = GamePartyLimits.normalizedJoinCode(code)
     guard normalized.count == GamePartyLimits.joinCodeLength else {
       joinStatus = .failed(message: SessionAlert.badJoinCode(peerName: peer.displayName).message)
       return
@@ -219,7 +221,7 @@ final class GameSession {
       backgroundedDuringGame = false
       guard isInLiveGame else { return }
       showStayInAppTip = true
-      recoverAfterForeground()
+      continuity.recoverAfterForeground()
     case .inactive:
       break
     }
@@ -239,9 +241,7 @@ final class GameSession {
       }
     }
     cancelAllDisconnectGrace()
-    isReconnecting = false
-    isMigratingHost = false
-    migrationPreviousHostDeviceId = nil
+    continuity.reset()
     reconnectingDeviceIds = []
     backgroundedDuringGame = false
     messageTransport?.disconnect()
@@ -250,7 +250,7 @@ final class GameSession {
     messageTransport = nil
     cancelPhaseTimer()
     discoveredPeers = []
-    peerDeviceIds = [:]
+    peerDirectory.removeAll()
     handoff = nil
     joinStatus = .idle
     role = .idle
@@ -505,6 +505,30 @@ final class GameSession {
           message: "Hand the phone to \(nextPlayer.name) so they can draw."
         )
       }
+    case .reconnecting:
+      role = .joiner
+      localPlayerId = devicePlayerId
+      replaceState(
+        PreviewStateFactory.drawingState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
+      )
+      isReconnecting = true
+      isMigratingHost = false
+    case .hostMigration:
+      role = .joiner
+      localPlayerId = devicePlayerId
+      replaceState(
+        PreviewStateFactory.drawingState(
+          devicePlayerId: devicePlayerId,
+          displayName: localDisplayName,
+          avatar: localAvatar
+        )
+      )
+      isMigratingHost = true
+      isReconnecting = false
     }
   }
 
@@ -542,7 +566,7 @@ final class GameSession {
 
   private func attachHostTransport(resetPeers: Bool) {
     if resetPeers {
-      peerDeviceIds = [:]
+      peerDirectory.removeAll()
       reconnectingDeviceIds = []
     }
     let transport = NetworkPartyTransport(displayName: localDisplayName, serviceType: Self.serviceType)
@@ -576,193 +600,6 @@ final class GameSession {
       info["hostDevice"] = devicePlayerId
     }
     return info
-  }
-
-  private func recoverAfterForeground() {
-    if role == .host, state != nil {
-      // Local peer links often die in background — keep advertising for rejoins.
-      if transport == nil {
-        attachHostTransport(resetPeers: false)
-      } else {
-        transport?.refreshHosting(discoveryInfo: hostingDiscoveryInfo())
-      }
-      // Watch for a successor that took over while we were offline.
-      transport?.ensureBrowsingAlongsideHosting()
-      considerYieldingToSuccessorHost()
-      schedulePhaseTimer()
-    } else if role == .joiner, state != nil {
-      beginJoinerReconnect()
-    }
-  }
-
-  private func beginJoinerReconnect() {
-    let alreadyReconnecting = isReconnecting || isMigratingHost
-    isReconnecting = true
-    statusBanner = "Connection lost — trying to reconnect…"
-    if transport == nil {
-      attachJoinerTransport()
-    } else {
-      transport?.ensureBrowsing()
-    }
-    connectDiscoveredPeersForReconnect()
-    if !alreadyReconnecting {
-      scheduleDisconnectGrace(key: "host") { [weak self] in
-        self?.attemptHostMigrationAfterHostLoss()
-      }
-    }
-  }
-
-  private func connectDiscoveredPeersForReconnect() {
-    guard role == .joiner else { return }
-    for peer in peersRelevantForReconnect() {
-      transport?.connect(to: peer)
-    }
-  }
-
-  private func peersRelevantForReconnect() -> [DiscoveredPeer] {
-    guard let state else { return discoveredPeers }
-    let room = state.roomId
-    if isMigratingHost {
-      let previous = migrationPreviousHostDeviceId ?? state.networkHostDeviceId
-      return discoveredPeers.filter { peer in
-        guard peer.roomId == room || (room.isEmpty && peer.roomId == nil) else { return false }
-        if let hostDevice = peer.hostDeviceId, !previous.isEmpty {
-          return hostDevice != previous
-        }
-        return (peer.epoch ?? 0) > state.stateEpoch
-      }
-    }
-    if room.isEmpty {
-      return discoveredPeers
-    }
-    let sameRoom = discoveredPeers.filter { $0.roomId == room || $0.roomId == nil }
-    return sameRoom.isEmpty ? discoveredPeers : sameRoom
-  }
-
-  /// After reconnect grace, elect a new network host among remaining phones.
-  private func attemptHostMigrationAfterHostLoss() {
-    guard role == .joiner, var current = state else {
-      isReconnecting = false
-      endJoinerSession(reason: .lostConnection)
-      return
-    }
-
-    let previousHost = current.networkHostDeviceId.isEmpty
-      ? (migrationPreviousHostDeviceId ?? "")
-      : current.networkHostDeviceId
-    migrationPreviousHostDeviceId = previousHost.isEmpty ? nil : previousHost
-
-    if !previousHost.isEmpty, previousHost != devicePlayerId {
-      current = GameEngine.handleDisconnect(deviceId: previousHost, from: current)
-    }
-    // Keep seats for devices still here — we're present.
-    current = GameEngine.clearAbsent(deviceId: devicePlayerId, in: current)
-    applyState(current)
-
-    guard let winner = GameEngine.electedNetworkHostDeviceId(in: current) else {
-      isReconnecting = false
-      isMigratingHost = false
-      endJoinerSession(reason: .lostConnection)
-      return
-    }
-
-    if winner == devicePlayerId {
-      promoteToNetworkHost(previousHostDeviceId: previousHost)
-    } else {
-      beginSeekingMigratedHost()
-    }
-  }
-
-  private func promoteToNetworkHost(previousHostDeviceId: String) {
-    guard var current = state else { return }
-    isMigratingHost = true
-    isReconnecting = false
-    cancelDisconnectGrace(key: "host")
-    cancelDisconnectGrace(key: "migration")
-
-    if !previousHostDeviceId.isEmpty {
-      current = GameEngine.handleDisconnect(deviceId: previousHostDeviceId, from: current)
-    }
-    current = GameEngine.clearAbsent(deviceId: devicePlayerId, in: current)
-    current = GameEngine.claimNetworkHost(deviceId: devicePlayerId, in: current)
-
-    role = .host
-    handoff = nil
-    applyState(current)
-    // Unit tests inject RecordingMessageTransport — keep it instead of opening Bonjour.
-    if messageTransport is RecordingMessageTransport {
-      peerDeviceIds = [:]
-      reconnectingDeviceIds = []
-    } else {
-      messageTransport?.disconnect()
-      transport?.stop()
-      transport = nil
-      messageTransport = nil
-      attachHostTransport(resetPeers: true)
-    }
-
-    sync(current, includeAvatars: true)
-    isMigratingHost = false
-    migrationPreviousHostDeviceId = nil
-    statusBanner = "You're hosting now"
-    prepareLocalHandoffIfNeeded()
-  }
-
-  private func beginSeekingMigratedHost() {
-    isMigratingHost = true
-    isReconnecting = true
-    statusBanner = "Finding a new host…"
-    if transport == nil {
-      attachJoinerTransport()
-    } else {
-      transport?.ensureBrowsing()
-    }
-    connectDiscoveredPeersForReconnect()
-    scheduleDisconnectGrace(key: "migration") { [weak self] in
-      self?.isReconnecting = false
-      self?.isMigratingHost = false
-      self?.endJoinerSession(reason: .lostConnection)
-    }
-  }
-
-  private func considerYieldingToSuccessorHost() {
-    guard role == .host, let state else { return }
-    guard let successor = discoveredPeers.first(where: { shouldYieldHost(to: $0, given: state) }) else {
-      return
-    }
-    demoteAndJoin(successor)
-  }
-
-  private func shouldYieldHost(to peer: DiscoveredPeer, given state: GameState) -> Bool {
-    guard !state.roomId.isEmpty, peer.roomId == state.roomId else { return false }
-    let peerEpoch = peer.epoch ?? 0
-    if peerEpoch > state.stateEpoch { return true }
-    if peerEpoch < state.stateEpoch { return false }
-    guard let peerHost = peer.hostDeviceId, !peerHost.isEmpty else { return false }
-    // Equal epoch tie-break — should be rare; lower device id wins.
-    return peerHost < state.networkHostDeviceId
-      && peerHost != devicePlayerId
-  }
-
-  private func demoteAndJoin(_ peer: DiscoveredPeer) {
-    isMigratingHost = true
-    isReconnecting = true
-    cancelPhaseTimer()
-    role = .joiner
-    statusBanner = "Another phone took over as host…"
-    messageTransport?.disconnect()
-    transport?.stop()
-    transport = nil
-    messageTransport = nil
-    attachJoinerTransport()
-    // Re-fetch peer from discovered list after browse starts; connect when listed.
-    // Immediate connect if endpoint map already has it from prior parallel browse.
-    transport?.connect(to: peer)
-    scheduleDisconnectGrace(key: "migration") { [weak self] in
-      self?.isReconnecting = false
-      self?.isMigratingHost = false
-      self?.endJoinerSession(reason: .lostConnection)
-    }
   }
 
   private func sync(_ newState: GameState, includeAvatars: Bool = false) {
@@ -879,12 +716,7 @@ extension GameSession: PartyTransportDelegate {
 
   func transport(_ transport: any PartyTransport, discoveredPeersDidChange peers: [DiscoveredPeer]) {
     discoveredPeers = peers
-    if role == .host {
-      considerYieldingToSuccessorHost()
-    }
-    if isReconnecting || isMigratingHost {
-      connectDiscoveredPeersForReconnect()
-    }
+    continuity.peersChanged()
   }
 
   func transportDidFailToAdvertise(_ transport: any PartyTransport, error: Error) {
@@ -904,7 +736,7 @@ extension GameSession: PartyTransportDelegate {
   private func handle(_ message: NetworkMessage, fromPeerKey peerKey: String) {
     switch role {
     case .host:
-      handleHost(message, fromPeerKey: peerKey)
+      applyHostInbox(message, fromPeerKey: peerKey)
     case .joiner:
       switch message {
       case .syncState(let gameState):
@@ -914,14 +746,8 @@ extension GameSession: PartyTransportDelegate {
         }
         applyState(gameState)
         joinStatus = .idle
-        let wasReconnecting = isReconnecting || isMigratingHost
-        if isReconnecting || isMigratingHost {
-          isReconnecting = false
-          isMigratingHost = false
-          migrationPreviousHostDeviceId = nil
-          cancelDisconnectGrace(key: "host")
-          cancelDisconnectGrace(key: "migration")
-          statusBanner = wasReconnecting ? "Reconnected" : nil
+        if continuity.noteLinkRestored() {
+          statusBanner = "Reconnected"
         }
         prepareLocalHandoffIfNeeded()
       case .sessionEnded:
@@ -934,125 +760,36 @@ extension GameSession: PartyTransportDelegate {
     }
   }
 
-  private func handleHost(_ message: NetworkMessage, fromPeerKey peerKey: String) {
-    guard var current = state else { return }
-    let peerDevice = peerDeviceIds[peerKey] ?? peerKey
-
-    switch message {
-    case .hello(let playerId, let name, let avatar, let joinCode):
-      guard Self.normalizedJoinCode(joinCode) == current.joinCode,
-            !current.joinCode.isEmpty else {
-        transport?.disconnectPeer(peerKey)
-        return
-      }
-
-      // Drop mid-round strangers (lobby-only joins).
-      let isReturning = current.players.contains(where: { $0.deviceId == playerId })
-      if !isReturning, current.phase != .lobby {
-        transport?.disconnectPeer(peerKey)
-        return
-      }
-
-      // Reject spoofed reclaim while another live connection still owns this device.
-      let hasLiveClaim = peerDeviceIds.contains { $0.value == playerId && $0.key != peerKey }
-      if hasLiveClaim {
-        let canReplace = reconnectingDeviceIds.contains(playerId)
-          || current.absentDeviceIds.contains(playerId)
-        guard canReplace else {
-          transport?.disconnectPeer(peerKey)
-          return
+  private func applyHostInbox(_ message: NetworkMessage, fromPeerKey peerKey: String) {
+    guard let current = state else { return }
+    let steps = HostInbox.steps(
+      for: message,
+      peerKey: peerKey,
+      state: current,
+      peers: peerDirectory,
+      reconnectingDeviceIds: reconnectingDeviceIds
+    )
+    for step in steps {
+      switch step {
+      case .bind(let key, let deviceId):
+        peerDirectory.bind(key, to: deviceId)
+      case .unbind(let key):
+        peerDirectory.unbind(key)
+      case .cancelGraceKey(let key):
+        grace.cancel(key: key)
+      case .cancelGraceDevice(let deviceId):
+        for key in peerDirectory.keys(for: deviceId) {
+          grace.cancel(key: key)
         }
-      }
-
-      if !isReturning, current.players.count >= GamePartyLimits.maxPlayers {
-        transport?.disconnectPeer(peerKey)
-        return
-      }
-
-      bindPeer(peerKey, to: playerId)
-      cancelGraceForDevice(playerId)
-      reconnectingDeviceIds.remove(playerId)
-
-      if isReturning {
-        current = GameEngine.clearAbsent(deviceId: playerId, in: current)
-        current = GameEngine.updateName(playerId: playerId, name: name, in: current)
-        if !avatar.isEmpty {
-          current = GameEngine.updateAvatar(playerId: playerId, avatar: avatar, in: current)
-        }
-        statusBanner = "\(GamePartyLimits.sanitizedName(name)) is back"
-        sync(current, includeAvatars: true)
-        return
-      }
-      let next = GameEngine.addPlayer(
-        id: playerId,
-        name: name,
-        deviceId: playerId,
-        avatar: avatar,
-        to: current
-      )
-      guard next != current else {
-        transport?.disconnectPeer(peerKey)
-        return
-      }
-      sync(next)
-
-    case .setName(let playerId, let name):
-      guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
-      current = GameEngine.updateName(playerId: playerId, name: name, in: current)
-      sync(current)
-
-    case .setAvatar(let playerId, let avatar):
-      guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
-      current = GameEngine.updateAvatar(playerId: playerId, avatar: avatar, in: current)
-      sync(current)
-
-    case .addPlayer(let playerId, let name):
-      let next = GameEngine.addPlayer(
-        id: playerId,
-        name: name,
-        deviceId: peerDevice,
-        to: current
-      )
-      guard next != current else { return }
-      sync(next)
-
-    case .removePlayer(let playerId):
-      guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
-      current = GameEngine.removePlayer(id: playerId, from: current)
-      sync(current)
-
-    case .submitDrawing(let playerId, let drawing):
-      guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
-      let before = current
-      current = GameEngine.submitDrawing(playerId: playerId, drawing: drawing, in: current)
-      guard current != before else { return }
-      sync(current)
-
-    case .submitGuess(let playerId, let text):
-      guard owns(playerId, peerDevice: peerDevice, in: current) else { return }
-      let before = current
-      current = GameEngine.submitGuess(playerId: playerId, text: text, in: current)
-      guard current != before else { return }
-      sync(current)
-
-    case .advanceReveal:
-      // Only the host device advances reveal (local `advanceReveal()`).
-      break
-
-    case .leave:
-      // Intentional leave — finalize immediately (no grace).
-      cancelDisconnectGrace(key: peerKey)
-      if let deviceId = peerDeviceIds[peerKey] {
+      case .clearReconnecting(let deviceId):
         reconnectingDeviceIds.remove(deviceId)
+      case .banner(let text):
+        statusBanner = text
+      case .disconnect(let key):
+        transport?.disconnectPeer(key)
+      case .sync(let next, let includeAvatars):
+        sync(next, includeAvatars: includeAvatars)
       }
-      announceDeparture(deviceId: peerDevice, in: current)
-      current = GameEngine.handleDisconnect(deviceId: peerDevice, from: current)
-      peerDeviceIds[peerKey] = nil
-      transport?.disconnectPeer(peerKey)
-      sync(current)
-
-    case .syncState, .sessionEnded:
-      break
     }
   }
 
@@ -1092,14 +829,15 @@ extension GameSession: PartyTransportDelegate {
       return
     }
     guard state != nil else { return }
-    beginJoinerReconnect()
+    continuity.beginJoinerReconnect()
   }
 
   private func beginHostPeerGrace(peerKey: String) {
-    let peerDevice = peerDeviceIds[peerKey] ?? peerKey
+    let peerDevice = peerDirectory.deviceId(for: peerKey)
     // Unknown connection that never said hello — drop quietly.
-    guard peerDeviceIds[peerKey] != nil || state?.players.contains(where: { $0.deviceId == peerDevice }) == true else {
-      peerDeviceIds[peerKey] = nil
+    guard peerDirectory.boundDeviceId(for: peerKey) != nil
+      || state?.players.contains(where: { $0.deviceId == peerDevice }) == true else {
+      peerDirectory.unbind(peerKey)
       return
     }
     let name = state?.players.first { $0.deviceId == peerDevice }?.name ?? "Player"
@@ -1112,70 +850,83 @@ extension GameSession: PartyTransportDelegate {
 
   private func finalizeHostPeerLoss(peerKey: String) {
     guard role == .host, var current = state else { return }
-    let peerDevice = peerDeviceIds[peerKey] ?? peerKey
+    let peerDevice = peerDirectory.deviceId(for: peerKey)
     reconnectingDeviceIds.remove(peerDevice)
-    announceDeparture(deviceId: peerDevice, in: current)
+    if let banner = HostInbox.departureBanner(deviceId: peerDevice, in: current) {
+      statusBanner = banner
+    }
     current = GameEngine.handleDisconnect(deviceId: peerDevice, from: current)
-    peerDeviceIds[peerKey] = nil
+    peerDirectory.unbind(peerKey)
     sync(current)
   }
 
-  private func bindPeer(_ peerKey: String, to deviceId: String) {
-    // Drop stale keys for the same device (reconnect gets a new connection id).
-    peerDeviceIds = peerDeviceIds.filter { $0.value != deviceId || $0.key == peerKey }
-    peerDeviceIds[peerKey] = deviceId
-  }
-
-  private func cancelGraceForDevice(_ deviceId: String) {
-    let keys = peerDeviceIds.compactMap { $0.value == deviceId ? $0.key : nil }
-    for key in keys {
-      cancelDisconnectGrace(key: key)
-    }
-  }
-
-  private func announceDeparture(deviceId: String, in state: GameState) {
-    let names = state.players.filter { $0.deviceId == deviceId }.map(\.name)
-    guard let name = names.first else { return }
-    if state.phase == .lobby {
-      statusBanner = "\(name) left the lobby"
-    } else {
-      statusBanner = "\(name) left — continuing without them"
-    }
-  }
-
   private func scheduleDisconnectGrace(key: String, action: @escaping @MainActor () -> Void) {
-    disconnectGraceTasks[key]?.cancel()
-    let seconds = disconnectGraceSeconds
-    disconnectGraceTasks[key] = Task { [weak self] in
-      let ns = UInt64(max(0, seconds) * 1_000_000_000)
-      try? await Task.sleep(nanoseconds: ns)
-      guard !Task.isCancelled else { return }
-      await MainActor.run {
-        self?.disconnectGraceTasks[key] = nil
-        action()
-      }
-    }
+    grace.schedule(key: key, action: action)
   }
 
   private func cancelDisconnectGrace(key: String) {
-    disconnectGraceTasks[key]?.cancel()
-    disconnectGraceTasks[key] = nil
+    grace.cancel(key: key)
   }
 
   private func cancelAllDisconnectGrace() {
-    for task in disconnectGraceTasks.values {
-      task.cancel()
+    grace.cancelAll()
+  }
+}
+
+extension GameSession {
+  /// Retained by `SessionContinuity`. Holds the session unowned so the two don't cycle.
+  final class ContinuityBridge: SessionContinuityContext {
+    unowned let session: GameSession
+
+    init(_ session: GameSession) {
+      self.session = session
     }
-    disconnectGraceTasks.removeAll()
-  }
 
-  private func owns(_ playerId: String, peerDevice: String, in state: GameState) -> Bool {
-    state.player(id: playerId)?.deviceId == peerDevice
-  }
+    var role: Role { session.role }
+    var state: GameState? { session.state }
+    var devicePlayerId: String { session.devicePlayerId }
+    var discoveredPeers: [DiscoveredPeer] { session.discoveredPeers }
+    var isReconnecting: Bool { session.isReconnecting }
+    var isMigratingHost: Bool { session.isMigratingHost }
+    var hasTransport: Bool { session.transport != nil }
+    var keepsInjectedTransport: Bool { session.messageTransport is RecordingMessageTransport }
 
-  private static func normalizedJoinCode(_ code: String) -> String {
-    let digits = code.filter(\.isNumber)
-    return String(digits.prefix(GamePartyLimits.joinCodeLength))
+    func setRole(_ role: Role) { session.role = role }
+    func setReconnecting(_ value: Bool) { session.isReconnecting = value }
+    func setMigratingHost(_ value: Bool) { session.isMigratingHost = value }
+    func setStatusBanner(_ value: String?) { session.statusBanner = value }
+    func setHandoff(_ value: SeatHandoff?) { session.handoff = value }
+
+    func applyState(_ newState: GameState) { session.applyState(newState) }
+    func sync(_ newState: GameState, includeAvatars: Bool) {
+      session.sync(newState, includeAvatars: includeAvatars)
+    }
+    func endJoinerSession(reason: SessionAlert) { session.endJoinerSession(reason: reason) }
+    func attachHostTransport(resetPeers: Bool) { session.attachHostTransport(resetPeers: resetPeers) }
+    func attachJoinerTransport() { session.attachJoinerTransport() }
+    func cancelPhaseTimer() { session.cancelPhaseTimer() }
+    func schedulePhaseTimer() { session.schedulePhaseTimer() }
+    func prepareLocalHandoffIfNeeded() { session.prepareLocalHandoffIfNeeded() }
+    func scheduleDisconnectGrace(key: String, action: @escaping @MainActor () -> Void) {
+      session.scheduleDisconnectGrace(key: key, action: action)
+    }
+    func cancelDisconnectGrace(key: String) { session.cancelDisconnectGrace(key: key) }
+    func refreshHostingAdvertisement() {
+      session.transport?.refreshHosting(discoveryInfo: session.hostingDiscoveryInfo())
+    }
+    func ensureBrowsingAlongsideHosting() { session.transport?.ensureBrowsingAlongsideHosting() }
+    func ensureBrowsing() { session.transport?.ensureBrowsing() }
+    func connect(to peer: DiscoveredPeer) { session.transport?.connect(to: peer) }
+    func tearDownTransport() {
+      session.messageTransport?.disconnect()
+      session.transport?.stop()
+      session.transport = nil
+      session.messageTransport = nil
+    }
+    func clearPeerBook() {
+      session.peerDirectory.removeAll()
+      session.reconnectingDeviceIds = []
+    }
   }
 }
 
@@ -1194,11 +945,11 @@ extension GameSession {
     self.role = role
     self.state = state
     self.phase = state?.phase
-    self.peerDeviceIds = peerDeviceIds
+    self.peerDirectory = PeerDirectory(deviceIds: peerDeviceIds)
     self.messageTransport = messageTransport
     self.joinStatus = joinStatus
     if let disconnectGraceSeconds {
-      self.disconnectGraceSeconds = disconnectGraceSeconds
+      grace.seconds = disconnectGraceSeconds
     }
     if let localPlayerId {
       self.localPlayerId = localPlayerId
@@ -1219,21 +970,19 @@ extension GameSession {
       finalizeHostPeerLoss(peerKey: peerKey)
     } else if role == .joiner {
       if peerKey == "migration" {
-        isReconnecting = false
-        isMigratingHost = false
-        endJoinerSession(reason: .lostConnection)
+        continuity.migrationTimedOut()
       } else {
-        attemptHostMigrationAfterHostLoss()
+        continuity.attemptHostMigrationAfterHostLoss()
       }
     }
   }
 
   func testing_attemptHostMigration() {
-    attemptHostMigrationAfterHostLoss()
+    continuity.attemptHostMigrationAfterHostLoss()
   }
 
   func testing_promoteToNetworkHost(previousHostDeviceId: String) {
-    promoteToNetworkHost(previousHostDeviceId: previousHostDeviceId)
+    continuity.promoteToNetworkHost(previousHostDeviceId: previousHostDeviceId)
   }
 
   var testing_isMigratingHost: Bool { isMigratingHost }
@@ -1243,5 +992,13 @@ extension GameSession {
   }
 
   var testing_messageTransport: GameMessageTransport? { messageTransport }
+
+  func testing_handlePhaseExpired() {
+    handlePhaseExpired()
+  }
+
+  func testing_prepareLocalHandoffIfNeeded() {
+    prepareLocalHandoffIfNeeded()
+  }
 }
 #endif

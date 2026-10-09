@@ -137,13 +137,8 @@ struct DrawingToolbar: View {
     .accessibilityLabel("Undo")
   }
 
-  private func hexIsLight(_ hex: String) -> Bool {
-    let cleaned = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted).uppercased()
-    return cleaned == "FFFFFF" || cleaned == "FFFFFFFF"
-  }
-
   private func swatchEdge(for hex: String) -> Color {
-    if hexIsLight(hex) {
+    if DrawingPalette.isLightHex(hex) {
       return Theme.Ink.deep.opacity(0.25)
     }
     return Color(drawingHex: hex).opacity(0.55)

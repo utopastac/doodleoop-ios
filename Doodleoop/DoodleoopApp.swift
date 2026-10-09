@@ -11,6 +11,9 @@ struct DoodleoopApp: App {
       UITesting.preparePreferences()
     }
     let history = GameHistoryStore()
+    if UITesting.isEnabled {
+      UITesting.seedDemoHistory(into: history)
+    }
     _historyStore = State(wrappedValue: history)
     _session = State(wrappedValue: GameSession(historyStore: history))
   }

@@ -87,9 +87,344 @@ platform :ios do
       result_bundle: true,
     )
   end
+
+  desc "Run unit tests"
+  lane :unit_tests do
+    run_tests(
+      project: "Doodleoop.xcodeproj",
+      scheme: "Doodleoop",
+      device: ENV["TEST_DEVICE"] || "iPhone 17",
+      only_testing: ["DoodleoopTests"],
+      derived_data_path: "./build/unit_test_derived_data",
+      result_bundle: true,
+      output_directory: "./build/unit_test_results",
+      clean: false,
+      prelaunch_simulator: true,
+    )
+  end
+
+  desc "Create the App Store Connect record if it does not exist yet"
+  lane :ensure_app do
+    api_key = load_asc_api_key
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
+    existing = Spaceship::ConnectAPI::App.find(app_identifier)
+    if existing
+      UI.success("App Store Connect app already exists (#{existing.id})")
+      next
+    end
+
+    UI.important("Creating App Store Connect app #{app_identifier}")
+    bundle = Spaceship::ConnectAPI::BundleId.all.find { |item| item.identifier == app_identifier }
+    unless bundle
+      bundle = Spaceship::ConnectAPI::BundleId.create(
+        name: "Doodleoop",
+        platform: "IOS",
+        identifier: app_identifier,
+      )
+      UI.success("Registered bundle ID #{bundle.identifier}")
+    end
+
+    begin
+      Spaceship::ConnectAPI::App.create(
+        name: "Doodleoop",
+        bundle_id: bundle.id,
+        sku: "doodleoop-ios",
+        primary_locale: "en-GB",
+        version_string: "1.0.0",
+        platforms: ["IOS"],
+      )
+    rescue => error
+      UI.user_error!(<<~MSG)
+        Could not create the Doodleoop app on App Store Connect (#{error.message}).
+
+        The API key can update existing apps, but this call was refused permission to create one.
+        In App Store Connect, add a new iOS app:
+          Name: Doodleoop
+          Primary language: English (UK)
+          Bundle ID: #{app_identifier}
+          SKU: doodleoop-ios
+        Then re-run `fastlane release`.
+      MSG
+    end
+    UI.success("Created Doodleoop on App Store Connect")
+  end
+
+  desc "Archive, upload 1.0.0 with screenshots and metadata, and submit for review"
+  lane :release do |options|
+    skip_build = env_flag("SKIP_BUILD")
+    unless skip_build || env_flag("SKIP_TESTS")
+      unit_tests
+      ui_smoke
+    end
+
+    api_key = load_asc_api_key
+    ensure_app
+    write_review_contact!
+
+    unless env_flag("SKIP_SCREENSHOTS") || env_flag("SKIP_SCREENSHOT_CAPTURE")
+      screenshots
+    end
+
+    version = skip_build ? marketing_version_from_yml : current_marketing_version
+    unless skip_build
+      build = next_build_number(api_key: api_key)
+      increment_build_number(
+        build_number: build,
+        xcodeproj: "Doodleoop.xcodeproj",
+      )
+      sync_project_yml_build_number(build)
+      UI.important("Releasing Doodleoop #{version} (#{build})")
+
+      build_app(
+        project: "Doodleoop.xcodeproj",
+        scheme: "Doodleoop",
+        configuration: "Release",
+        clean: true,
+        export_method: "app-store",
+        export_options: "./ExportOptionsAppStoreExport.plist",
+        output_directory: "./build",
+        output_name: "Doodleoop",
+        xcargs: "-allowProvisioningUpdates",
+        export_xcargs: "-allowProvisioningUpdates",
+      )
+    end
+
+    upload_to_app_store(
+      **asc_upload_params(
+        api_key: api_key,
+        app_version: version,
+        skip_binary_upload: skip_build,
+        skip_metadata: false,
+        skip_screenshots: env_flag("SKIP_SCREENSHOTS"),
+        overwrite_screenshots: !env_flag("SKIP_SCREENSHOTS"),
+        submit_for_review: false,
+        automatic_release: false,
+        precheck_include_in_app_purchases: false,
+      ),
+    )
+    set_free_price(api_key: api_key)
+
+    update_app_age_rating(
+      api_key: api_key,
+      app_identifier: app_identifier,
+      age_rating_config_path: "fastlane/metadata/age_rating.json",
+    )
+    publish_data_not_collected(api_key: api_key)
+
+    submit = !skip_build && options[:submit] != false && !env_flag("SKIP_SUBMIT")
+    if submit
+      upload_to_app_store(
+        **asc_upload_params(
+          api_key: api_key,
+          app_version: version,
+          skip_binary_upload: true,
+          skip_metadata: true,
+          skip_screenshots: true,
+          submit_for_review: true,
+          automatic_release: true,
+          phased_release: false,
+          precheck_include_in_app_purchases: false,
+          submission_information: {
+            add_id_info_uses_idfa: false,
+            export_compliance_uses_encryption: false,
+            content_rights_contains_third_party_content: false,
+            content_rights_has_rights: true,
+          },
+        ),
+      )
+      UI.success("Submitted Doodleoop #{version} (#{build}) for App Review")
+    elsif skip_build
+      UI.success("Uploaded Doodleoop #{version} metadata without a binary")
+    else
+      UI.success("Uploaded Doodleoop #{version} (#{build}) without submitting")
+    end
+  end
 end
 
 def env_flag(name)
   value = ENV[name].to_s.strip.downcase
   %w[1 true yes y].include?(value)
+end
+
+def app_identifier
+  "com.archgrovehouse.doodleoop"
+end
+
+def current_marketing_version
+  get_version_number(xcodeproj: "Doodleoop.xcodeproj", target: "Doodleoop")
+end
+
+def marketing_version_from_yml
+  path = File.expand_path("../project.yml", __dir__)
+  File.read(path)[/MARKETING_VERSION:\s*"([^"]+)"/, 1] || "1.0.0"
+end
+
+def current_build_number
+  get_build_number(xcodeproj: "Doodleoop.xcodeproj")
+end
+
+def next_build_number(api_key:)
+  if ENV["BUILD_NUMBER"] && !ENV["BUILD_NUMBER"].empty?
+    return ENV["BUILD_NUMBER"].to_i
+  end
+
+  begin
+    latest = latest_testflight_build_number(
+      api_key: api_key,
+      app_identifier: app_identifier,
+      initial_build_number: 0,
+    )
+    [latest.to_i + 1, current_build_number.to_i].max
+  rescue => error
+    UI.important("Could not read TestFlight build number (#{error.message}); using local build")
+    [current_build_number.to_i, 1].max
+  end
+end
+
+def sync_project_yml_build_number(build)
+  path = File.expand_path("../project.yml", __dir__)
+  contents = File.read(path)
+  updated = contents.sub(/CURRENT_PROJECT_VERSION: "\d+"/, %(CURRENT_PROJECT_VERSION: "#{build}"))
+  File.write(path, updated) if updated != contents
+end
+
+def asc_upload_params(**overrides)
+  params = {
+    screenshots_path: "./screenshots",
+    metadata_path: "./fastlane/metadata",
+    run_precheck_before_submit: false,
+    force: true,
+    submit_for_review: false,
+    reject_if_possible: false,
+  }
+
+  if overrides.key?(:api_key)
+    params[:api_key] = overrides.delete(:api_key)
+  else
+    params[:api_key] = load_asc_api_key
+  end
+
+  params.merge(overrides)
+end
+
+def load_asc_api_key
+  key_id = ENV["APP_STORE_CONNECT_API_KEY_KEY_ID"] || ENV["ASC_KEY_ID"]
+  issuer_id = ENV["APP_STORE_CONNECT_API_KEY_ISSUER_ID"] || ENV["ASC_ISSUER_ID"]
+  key_filepath = ENV["APP_STORE_CONNECT_API_KEY_KEY_FILEPATH"] || ENV["ASC_KEY_FILEPATH"]
+  key_content = ENV["APP_STORE_CONNECT_API_KEY_KEY"] || ENV["ASC_KEY_CONTENT"]
+
+  unless key_id && issuer_id && (key_filepath || key_content)
+    UI.user_error!("Missing App Store Connect API key. Add it to the gitignored .env (same key as the other apps).")
+  end
+
+  params = {
+    key_id: key_id,
+    issuer_id: issuer_id,
+    duration: 1200,
+    in_house: false,
+  }
+  if key_filepath && !key_filepath.empty?
+    params[:key_filepath] = key_filepath
+  else
+    params[:key_content] = key_content
+  end
+
+  app_store_connect_api_key(**params)
+end
+
+def write_review_contact!
+  require "fileutils"
+  dir = File.expand_path("metadata/review_information", __dir__)
+  FileUtils.mkdir_p(dir)
+  mapping = {
+    "first_name.txt" => ENV["REVIEW_FIRST_NAME"],
+    "last_name.txt" => ENV["REVIEW_LAST_NAME"],
+    "phone_number.txt" => ENV["REVIEW_PHONE"],
+    "email_address.txt" => ENV["REVIEW_EMAIL"],
+  }
+  missing = mapping.select { |_, value| value.to_s.strip.empty? }.keys
+  UI.user_error!("Missing review contact in .env (#{missing.join(', ')})") unless missing.empty?
+  mapping.each do |file, value|
+    File.write(File.join(dir, file), "#{value.to_s.strip}\n")
+  end
+end
+
+def set_free_price(api_key:)
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
+  app = Spaceship::ConnectAPI::App.find(app_identifier)
+  UI.user_error!("Could not find Doodleoop on App Store Connect") unless app
+
+  client = Spaceship::ConnectAPI.client.tunes_request_client
+  response = client.get("v1/apps/#{app.id}/appPricePoints", client.build_params(filter: { territory: "USA" }, limit: 200))
+  points = response.body.dig("data") || []
+  free = points.find do |point|
+    price = point.dig("attributes", "customerPrice").to_s
+    price == "0" || price == "0.0" || price == "0.00"
+  end
+  UI.user_error!("Could not find the free USA price point") unless free
+
+  body = {
+    data: {
+      type: "appPriceSchedules",
+      relationships: {
+        app: { data: { type: "apps", id: app.id } },
+        baseTerritory: { data: { type: "territories", id: "USA" } },
+        manualPrices: { data: [{ type: "appPrices", id: "${price0}" }] },
+      },
+    },
+    included: [
+      {
+        type: "appPrices",
+        id: "${price0}",
+        attributes: { startDate: nil },
+        relationships: {
+          appPricePoint: { data: { type: "appPricePoints", id: free["id"] } },
+        },
+      },
+    ],
+  }
+  client.post("v1/appPriceSchedules", body)
+  UI.success("Set Doodleoop to free")
+rescue => error
+  message = error.message.to_s
+  if message.include?("ENTITY_ERROR") || message.include?("already") || message.include?("There is a price")
+    UI.important("Price schedule already set (#{message})")
+  else
+    raise
+  end
+end
+
+def publish_data_not_collected(api_key:)
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.from(hash: api_key)
+  app = Spaceship::ConnectAPI::App.find(app_identifier)
+  UI.user_error!("Could not find Doodleoop on App Store Connect") unless app
+
+  publish_state = Spaceship::ConnectAPI::AppDataUsagesPublishState.get(app_id: app.id)
+  if publish_state&.published
+    UI.message("Privacy nutrition label already published")
+    return
+  end
+
+  Spaceship::ConnectAPI::AppDataUsage.all(
+    app_id: app.id,
+    includes: "category,grouping,purpose,dataProtection",
+    limit: 500,
+  ).each(&:delete!)
+
+  Spaceship::ConnectAPI::AppDataUsage.create(
+    app_id: app.id,
+    app_data_usage_category_id: nil,
+    app_data_usage_protection_id: Spaceship::ConnectAPI::AppDataUsageDataProtection::ID::DATA_NOT_COLLECTED,
+    app_data_usage_purpose_id: nil,
+  )
+
+  Spaceship::ConnectAPI::AppDataUsagesPublishState.get(app_id: app.id).publish!
+  UI.success("Published privacy label: data not collected")
+rescue Spaceship::UnexpectedResponse => error
+  message = error.message.to_s
+  if message.include?("dataUsagePublishState") || message.include?("does not exist")
+    UI.important("App Privacy is not on the App Store Connect API. In App Store Connect, open App Privacy and publish Data Not Collected.")
+  else
+    raise
+  end
 end

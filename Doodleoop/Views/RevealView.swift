@@ -207,7 +207,7 @@ struct RevealView: View {
 }
 
 /// One visible contribution, identified per pad so steps never reuse identity across pads.
-private struct RevealStep: Identifiable {
+struct RevealStep: Identifiable, Equatable {
   let id: String
   let index: Int
   let step: ChainStep
@@ -495,8 +495,10 @@ struct HandoffOverlay: View {
           }
           .doodleButton(.primary)
           .pageHorizontalPadding()
+          .accessibilityIdentifier("confirm-handoff")
         }
       }
+      .accessibilityIdentifier("handoff-overlay")
     }
   }
 }

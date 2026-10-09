@@ -151,6 +151,115 @@ final class CrashSmokeUITests: XCTestCase {
     leaveGame(in: app, hostEnds: true)
   }
 
+  @MainActor
+  func testDrawingToolbarToolsDoNotCrash() {
+    let app = launch(scene: .drawing)
+
+    for tool in ["Pen", "Pencil", "Highlighter", "Eraser"] {
+      let button = app.buttons[tool]
+      XCTAssertTrue(button.waitForExistence(timeout: 5), "Expected \(tool) tool")
+      button.tap()
+      assertAlive(app)
+    }
+
+    // Nib sizes for the selected eraser (12 / 24 / 40 / 64).
+    for nib in ["Nib 12", "Nib 24", "Nib 40", "Nib 64"] {
+      let button = app.buttons[nib]
+      XCTAssertTrue(button.waitForExistence(timeout: 3), "Expected \(nib)")
+      button.tap()
+      assertAlive(app)
+    }
+
+    let pen = app.buttons["Pen"]
+    XCTAssertTrue(pen.waitForExistence(timeout: 3), "Expected Pen tool")
+    pen.tap()
+    assertAlive(app)
+
+    for hex in ["#FFFFFF", "#000000", "#6176FF", "#EC6363"] {
+      let swatch = app.buttons["Color \(hex)"]
+      XCTAssertTrue(swatch.waitForExistence(timeout: 3), "Expected Color \(hex)")
+      swatch.tap()
+      assertAlive(app)
+    }
+
+    // Undo / Clear stay disabled on an empty canvas — tapping must still be safe.
+    let undo = app.buttons["Undo"]
+    XCTAssertTrue(undo.waitForExistence(timeout: 3), "Expected Undo")
+    if undo.isEnabled { undo.tap() }
+    assertAlive(app)
+
+    let clear = app.buttons["Clear"]
+    XCTAssertTrue(clear.waitForExistence(timeout: 3), "Expected Clear")
+    if clear.isEnabled { clear.tap() }
+    assertAlive(app)
+  }
+
+  @MainActor
+  func testReconnectOverlayLeaveDoesNotCrash() {
+    let app = launch(scene: .reconnect)
+    let overlay = app.descendants(matching: .any)["reconnect-overlay"]
+    XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Expected reconnect overlay")
+    // Overlay leave exits immediately — no confirmation dialog.
+    let leave = app.buttons["leave-game"].firstMatch
+    XCTAssertTrue(leave.waitForExistence(timeout: 5), "Expected Leave on reconnect overlay")
+    leave.tap()
+    assertAlive(app)
+  }
+
+  @MainActor
+  func testHostMigrationOverlayLeaveDoesNotCrash() {
+    let app = launch(scene: .hostMigration)
+    let overlay = app.descendants(matching: .any)["host-migration-overlay"]
+    XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Expected host migration overlay")
+    let leave = app.buttons["leave-game"].firstMatch
+    XCTAssertTrue(leave.waitForExistence(timeout: 5), "Expected Leave on migration overlay")
+    leave.tap()
+    assertAlive(app)
+  }
+
+  @MainActor
+  func testHandoffOverlayConfirmDoesNotCrash() {
+    let app = launch(scene: .handoff)
+    let overlay = app.descendants(matching: .any)["handoff-overlay"]
+    XCTAssertTrue(overlay.waitForExistence(timeout: 5), "Expected handoff overlay")
+    // Bracketed label is uppercased (`[ I'M CASEY ]`); identifier can be stripped by buttonStyle.
+    let confirm = app.buttons.matching(
+      NSPredicate(format: "label CONTAINS[c] %@", "I'M")
+    ).firstMatch
+    XCTAssertTrue(confirm.waitForExistence(timeout: 5), "Expected handoff confirm")
+    confirm.tap()
+    assertAlive(app)
+  }
+
+  @MainActor
+  func testHistoryDetailDoesNotCrash() {
+    let app = launch(scene: .history)
+
+    let item = app.descendants(matching: .any)["history-item"].firstMatch
+    XCTAssertTrue(item.waitForExistence(timeout: 8), "Expected seeded history item")
+    item.tap()
+    assertAlive(app)
+
+    let pad = app.descendants(matching: .any)["history-pad"].firstMatch
+    XCTAssertTrue(pad.waitForExistence(timeout: 5), "Expected history pad row")
+    pad.tap()
+    assertAlive(app)
+
+    let back = app.buttons["Back"].firstMatch
+    if back.waitForExistence(timeout: 3) {
+      back.tap()
+      assertAlive(app)
+    }
+
+    let dismiss = app.buttons["sheet-dismiss"].firstMatch
+    if dismiss.waitForExistence(timeout: 3) {
+      dismiss.tap()
+    } else if back.waitForExistence(timeout: 2) {
+      back.tap()
+    }
+    assertAlive(app)
+  }
+
   // MARK: - Helpers
 
   private enum Scene: String {
@@ -160,6 +269,10 @@ final class CrashSmokeUITests: XCTestCase {
     case guessing = "04-guessing"
     case reveal = "05-reveal"
     case roundOver = "06-round-over"
+    case reconnect = "07-reconnect"
+    case hostMigration = "08-host-migration"
+    case handoff = "09-handoff"
+    case history = "10-history"
   }
 
   @MainActor

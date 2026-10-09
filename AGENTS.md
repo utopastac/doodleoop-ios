@@ -7,7 +7,7 @@
 | Game rules / phases | `Doodleoop/Models/GameEngine.swift` | Put rules in views or session timers |
 | Domain state | `Doodleoop/Models/GameModels.swift` | Mix networking enums into UI |
 | Completed-round history | `Doodleoop/Models/SavedGame.swift` + `GameHistoryStore.swift` | Put file I/O in views |
-| Sync, seats, handoffs, local network | `Doodleoop/Networking/GameSession.swift` (+ `NetworkPartyTransport`) | Duplicate host/joiner apply paths |
+| Sync, seats, handoffs, local network | `GameSession.swift` (intents + `applyState`). Host messages: `HostInbox.swift`. Reconnect / host migration: `SessionContinuity.swift`. Link: `NetworkPartyTransport.swift` | Duplicate host/joiner apply paths |
 | Wire protocol | `Doodleoop/Networking/NetworkMessage.swift` | Redefine messages in models |
 | UI / screens | `Doodleoop/Views/*.swift` | Call Network.framework or mutate `GameState` directly |
 

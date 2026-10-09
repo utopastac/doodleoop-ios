@@ -42,6 +42,11 @@ struct HomeView: View {
       .navigationDestination(isPresented: $showHistory) {
         GameHistoryView()
       }
+      .onAppear {
+        if UITesting.parsedScene == .history {
+          showHistory = true
+        }
+      }
       .sheet(isPresented: $showSettings) {
         AppSettingsView()
       }
